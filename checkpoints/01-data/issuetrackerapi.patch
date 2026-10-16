@@ -1,0 +1,269 @@
+diff --git a/alembic/env.py b/alembic/env.py
+index 42e14a2..8f28197 100644
+--- a/alembic/env.py
++++ b/alembic/env.py
+@@ -10,7 +10,7 @@ from app.db import Base
+ load_environment()
+ 
+ from config import Config  # noqa: E402
+-from app.models import user  # noqa: F401,E402
++from app.models import user, tracker  # noqa: F401,E402
+ 
+ 
+ config = context.config
+diff --git a/alembic/versions/0003_tracker.py b/alembic/versions/0003_tracker.py
+new file mode 100644
+index 0000000..ddf58a0
+--- /dev/null
++++ b/alembic/versions/0003_tracker.py
+@@ -0,0 +1,39 @@
++"""Category and Issue persistence; existing users are preserved."""
++from alembic import op
++import sqlalchemy as sa
++
++revision = "0003_tracker"
++down_revision = "0002_add_role_to_users"
++branch_labels = None
++depends_on = None
++
++
++def upgrade():
++    op.create_table("categories",
++        sa.Column("id", sa.String(36), primary_key=True),
++        sa.Column("name", sa.String(100), nullable=False),
++        sa.Column("description", sa.Text()),
++        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
++        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
++        sa.CheckConstraint("length(trim(name)) > 0", name="ck_category_nonblank"))
++    op.create_index("uq_categories_name_lower", "categories", [sa.text("lower(name)")], unique=True)
++    op.create_table("issues",
++        sa.Column("id", sa.String(36), primary_key=True),
++        sa.Column("title", sa.String(200), nullable=False),
++        sa.Column("description", sa.Text()),
++        sa.Column("status", sa.String(20), nullable=False),
++        sa.Column("priority", sa.String(20), nullable=False),
++        sa.Column("category_id", sa.String(36), sa.ForeignKey("categories.id", ondelete="RESTRICT"), nullable=False),
++        sa.Column("assigned_user_id", sa.String(36), sa.ForeignKey("users.id", ondelete="SET NULL")),
++        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
++        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
++        sa.CheckConstraint("status IN ('open','in_progress','resolved','closed')", name="ck_issue_status"),
++        sa.CheckConstraint("priority IN ('low','medium','high','critical')", name="ck_issue_priority"),
++        sa.CheckConstraint("length(trim(title)) > 0", name="ck_issue_nonblank"))
++    op.create_index("ix_issues_category_id", "issues", ["category_id"])
++    op.create_index("ix_issues_assigned_user_id", "issues", ["assigned_user_id"])
++
++
++def downgrade():
++    op.drop_table("issues")
++    op.drop_table("categories")
+diff --git a/app/cli.py b/app/cli.py
+index 6a6f5b8..5b27ec9 100644
+--- a/app/cli.py
++++ b/app/cli.py
+@@ -123,9 +123,7 @@ def run_server(args):
+ 
+ 
+ def run_spec(args):
+-    command = ["pytest", "spec"]
+-    if args.target:
+-        command.append(args.target)
++    command = [sys.executable, "-m", "pytest", args.target or "spec"]
+     if args.keyword:
+         command.extend(["-k", args.keyword])
+ 
+diff --git a/app/db.py b/app/db.py
+index 116596a..42c1e74 100644
+--- a/app/db.py
++++ b/app/db.py
+@@ -1,4 +1,4 @@
+-from sqlalchemy import create_engine
++from sqlalchemy import create_engine, event
+ from sqlalchemy.engine import make_url
+ from sqlalchemy.orm import DeclarativeBase, sessionmaker
+ from sqlalchemy.pool import StaticPool
+@@ -28,6 +28,10 @@ class DatabaseManager:
+             if in_memory:
+                 options["poolclass"] = StaticPool
+         self.engine = create_engine(url, future=True, **options)
++        if url.get_backend_name() == "sqlite":
++            @event.listens_for(self.engine, "connect")
++            def enforce_foreign_keys(connection, _record):
++                connection.execute("PRAGMA foreign_keys=ON")
+         self.session_factory = sessionmaker(
+             bind=self.engine,
+             autoflush=False,
+diff --git a/app/models/__init__.py b/app/models/__init__.py
+index b2e47e8..6314252 100644
+--- a/app/models/__init__.py
++++ b/app/models/__init__.py
+@@ -1,3 +1,5 @@
+ from app.models.user import User
+ 
+ __all__ = ["User"]
++
++from app.models.tracker import Category, Issue
+diff --git a/app/models/tracker.py b/app/models/tracker.py
+new file mode 100644
+index 0000000..891f93b
+--- /dev/null
++++ b/app/models/tracker.py
+@@ -0,0 +1,39 @@
++from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, Text, func
++from sqlalchemy.orm import Mapped, mapped_column, relationship
++from app.db import Base
++from app.models.user import User, utcnow
++from uuid import uuid4
++from datetime import datetime
++
++
++class Category(Base):
++    __tablename__ = "categories"
++    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
++    name: Mapped[str] = mapped_column(String(100), nullable=False)
++    description: Mapped[str | None] = mapped_column(Text)
++    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
++    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
++    __table_args__ = (
++        Index("uq_categories_name_lower", func.lower(name), unique=True),
++        CheckConstraint("length(trim(name)) > 0", name="ck_category_nonblank"),
++    )
++
++
++class Issue(Base):
++    __tablename__ = "issues"
++    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
++    title: Mapped[str] = mapped_column(String(200), nullable=False)
++    description: Mapped[str | None] = mapped_column(Text)
++    status: Mapped[str] = mapped_column(String(20), nullable=False, default="open")
++    priority: Mapped[str] = mapped_column(String(20), nullable=False, default="medium")
++    category_id: Mapped[str] = mapped_column(ForeignKey("categories.id", ondelete="RESTRICT"), index=True)
++    assigned_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
++    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
++    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
++    category: Mapped[Category] = relationship(lazy="selectin")
++    assigned_user: Mapped[User | None] = relationship(lazy="selectin")
++    __table_args__ = (
++        CheckConstraint("status IN ('open','in_progress','resolved','closed')", name="ck_issue_status"),
++        CheckConstraint("priority IN ('low','medium','high','critical')", name="ck_issue_priority"),
++        CheckConstraint("length(trim(title)) > 0", name="ck_issue_nonblank"),
++    )
+diff --git a/app/seed_tracker.py b/app/seed_tracker.py
+new file mode 100644
+index 0000000..479f10f
+--- /dev/null
++++ b/app/seed_tracker.py
+@@ -0,0 +1,19 @@
++"""Idempotent sample categories, independent of user seeding."""
++from sqlalchemy import func, select
++from app.models.tracker import Category
++
++
++def seed_categories(session):
++    for name in ["Bug", "Feature Request", "Task", "Documentation"]:
++        if not session.scalar(select(Category).where(func.lower(Category.name) == name.lower())):
++            session.add(Category(name=name))
++    session.commit()
++
++
++if __name__ == "__main__":
++    from app import create_app
++    from app.db import db
++    create_app()
++    with db.session() as session:
++        seed_categories(session)
++    print("Sample categories ready.")
+diff --git a/requirements.lock.txt b/requirements.lock.txt
+new file mode 100644
+index 0000000..6033e67
+--- /dev/null
++++ b/requirements.lock.txt
+@@ -0,0 +1,47 @@
++alembic==1.20.0
++annotated-doc==0.0.5
++annotated-types==0.8.0
++anyio==4.15.1
++boto3==1.43.114
++botocore==1.43.114
++click==8.5.0
++factory_boy==3.3.3
++Faker==40.43.0
++fastapi==0.143.2
++gunicorn==26.2.0
++h11==0.16.0
++httpcore2==2.13.1
++httptools==0.9.0
++httpx2==2.13.1
++idna==3.20
++iniconfig==2.3.1
++jmespath==1.1.0
++Mako==1.4.3
++MarkupSafe==3.0.4
++opentelemetry-api==1.45.1
++packaging==26.3
++pluggy==1.7.0
++psycopg==3.3.6
++psycopg-binary==3.3.6
++pydantic==2.14.1
++pydantic_core==2.50.1
++Pygments==2.21.0
++PyJWT==2.15.1
++pytest==9.1.1
++python-dateutil==2.9.0.post0
++python-dotenv==1.2.4
++python-multipart==0.0.32
++PyYAML==6.0.3
++s3transfer==0.19.2
++six==1.17.0
++SQLAlchemy==2.1.4
++starlette==1.8.0
++truststore==0.10.5
++typing-inspection==0.4.4
++typing_extensions==4.16.0
++urllib3==2.8.0
++uvicorn==0.54.0
++uvloop==0.23.0
++watchfiles==1.3.0
++websockets==17.2
++Werkzeug==3.1.9
+diff --git a/spec/conftest.py b/spec/conftest.py
+index 4d55a92..1e9d793 100644
+--- a/spec/conftest.py
++++ b/spec/conftest.py
+@@ -16,6 +16,10 @@ from spec.factories import UserFactory  # noqa: E402
+ @pytest.fixture()
+ def app():
+     application = create_app("spec.settings.TestConfig")
++    # Fixtures drop tables. Never permit a non-test PostgreSQL target.
++    if db.engine.url.get_backend_name() == "postgresql":
++        if not (db.engine.url.database or "").endswith("_test"):
++            raise RuntimeError("Refusing destructive fixtures: database must end in _test")
+     Base.metadata.create_all(bind=db.engine)
+     yield application
+     Base.metadata.drop_all(bind=db.engine)
+diff --git a/spec/system/test_test_environment.py b/spec/system/test_test_environment.py
+index 98de657..20e5dbd 100644
+--- a/spec/system/test_test_environment.py
++++ b/spec/system/test_test_environment.py
+@@ -6,5 +6,8 @@ from sqlalchemy.engine import make_url
+ def test_test_environment_is_isolated_from_development(app):
+     database_url = make_url(app.state.settings.SQLALCHEMY_DATABASE_URI)
+ 
+-    assert database_url.database == "test.sqlite3"
++    assert database_url.database == "test.sqlite3" or (
++        database_url.get_backend_name() == "postgresql"
++        and database_url.database.endswith("_test")
++    )
+     assert Path(app.state.settings.STORAGE_LOCAL_ROOT) == Path("storage_test")
+diff --git a/spec/database/test_configuration.py b/spec/database/test_configuration.py
+index 6268b2d..c0537d0 100644
+--- a/spec/database/test_configuration.py
++++ b/spec/database/test_configuration.py
+@@ -100,7 +100,7 @@ def test_explicit_environment_and_postgres_alias(tmp_path, monkeypatch):
+     )
+     monkeypatch.setenv("APP_ENV", "development")
+     assert make_url(config.resolve_database_uri()).database == "example_development"
+-    assert config.resolve_database_uri("test") == "sqlite:///:memory:"
++    assert make_url(config.resolve_database_uri("test")).database == ":memory:"
+ 
+ 
+ def test_missing_configuration_file(tmp_path, monkeypatch):

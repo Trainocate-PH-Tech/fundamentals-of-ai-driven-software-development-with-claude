@@ -1,0 +1,260 @@
+diff --git a/README.md b/README.md
+index 83f9594..fb9d329 100644
+--- a/README.md
++++ b/README.md
+@@ -23,7 +23,7 @@ npm install
+ 2. Copy `.env.dist` to `.env` and change values accordingly.
+ 
+ * `API_BASE_URL`: Backend server
+-* `TOKEN_KEY_BEARER`: Key for token (makes use of `localStorage`)
++* `TOKEN_BEARER`: Key for token (makes use of `localStorage`)
+ * `CURRENT_USER`: Key for the logged in user
+ 
+ 3. (optional) Run the mock server
+diff --git a/build.js b/build.js
+index bf548bc..8e688e6 100644
+--- a/build.js
++++ b/build.js
+@@ -5,7 +5,7 @@ import autoprefixer from 'autoprefixer';
+ import "dotenv/config";
+ import fs from 'fs';
+ 
+-const port = 8000;
++const port = Number(process.env.WEB_PORT || 8000);
+ const args = process.argv.slice(2);
+ const watch = args.includes("--watch");
+ const dev = args.includes("--dev");
+diff --git a/src/js/Login.js b/src/js/Login.js
+index cb5e55e..2415163 100644
+--- a/src/js/Login.js
++++ b/src/js/Login.js
+@@ -7,7 +7,7 @@ import {
+   createSessionAndRedirect
+ } from "./services/AuthService";
+ 
+-export default Login = () => {
++const Login = () => {
+   const [email, setEmail] = useState("");
+   const [password, setPassword] = useState("");
+   const [errors, setErrors] = useState({});
+@@ -24,7 +24,7 @@ export default Login = () => {
+     }).catch((payload) => {
+       console.log("Something went wrong");
+       console.log(payload.response);
+-      setErrors(payload.response.data);
++      setErrors(payload.response?.data || {message: "Cannot reach the API"});
+       setIsLoading(false);
+     });
+   }
+@@ -38,11 +38,12 @@ export default Login = () => {
+           </h1>
+           <hr/>
+           <div className="form-group p-2">
+-            <label>
++            <label htmlFor="login-email">
+               <FontAwesomeIcon icon={faUser} className="me-2"/>
+               Email:
+             </label>
+             <input
++              id="login-email"
+               value={email}
+               disabled={isLoading}
+               className={`mt-2 ${getInputClassName(errors, 'email')}`}
+@@ -58,11 +59,12 @@ export default Login = () => {
+             {renderInputErrors(errors, 'email')}
+           </div>
+           <div className="form-group p-2">
+-            <label>
++            <label htmlFor="login-password">
+               <FontAwesomeIcon icon={faLock} className="me-2"/>
+               Password:
+             </label>
+             <input
++              id="login-password"
+               value={password}
+               disabled={isLoading}
+               className={`mt-2 ${getInputClassName(errors, 'password')}`}
+@@ -105,3 +107,5 @@ export default Login = () => {
+     </div>
+   );
+ }
++
++export default Login;
+diff --git a/src/js/Pagination.js b/src/js/Pagination.js
+index 37e1c01..e9073ec 100644
+--- a/src/js/Pagination.js
++++ b/src/js/Pagination.js
+@@ -1,7 +1,7 @@
+ import React from "react";
+ import { MAX_VISIBLE_PAGES } from "./helpers/Constants";
+ 
+-export default Pagination = ({
++const Pagination = ({
+   currentPage = 1,
+   totalPages = 1,
+   handlePrevious,
+@@ -95,3 +95,5 @@ export default Pagination = ({
+     </nav>
+   );
+ };
++
++export default Pagination;
+diff --git a/src/js/Sidebar.js b/src/js/Sidebar.js
+index d2a99ec..f7e23e1 100644
+--- a/src/js/Sidebar.js
++++ b/src/js/Sidebar.js
+@@ -7,7 +7,7 @@ import { useNavigate, useLocation } from "react-router-dom";
+ import { getCurrentUser } from "./services/AuthService";
+ import { getNavigationSections } from "./navigationServices";
+ 
+-export default Sidebar = () => {
++const Sidebar = () => {
+   const [isOpen, setIsOpen] = useState(true);
+ 
+   const navigate = useNavigate();
+@@ -69,3 +69,5 @@ export default Sidebar = () => {
+     </div>
+   );
+ }
++
++export default Sidebar;
+diff --git a/src/js/TopNavigation.js b/src/js/TopNavigation.js
+index ea37cb5..5461bab 100644
+--- a/src/js/TopNavigation.js
++++ b/src/js/TopNavigation.js
+@@ -74,7 +74,7 @@ const matchesSearch = (service, normalizedSearch) => {
+   return searchableText.includes(normalizedSearch);
+ };
+ 
+-export default TopNavigation = () => {
++const TopNavigation = () => {
+   const [searchValue, setSearchValue] = useState("");
+   const [isSearchFocused, setIsSearchFocused] = useState(false);
+   const [pinnedServiceIds, setPinnedServiceIds] = useState(readPinnedServices);
+@@ -256,3 +256,5 @@ export default TopNavigation = () => {
+     </header>
+   );
+ }
++
++export default TopNavigation;
+diff --git a/src/js/commons/AdminContent.js b/src/js/commons/AdminContent.js
+index 79b405c..6717573 100644
+--- a/src/js/commons/AdminContent.js
++++ b/src/js/commons/AdminContent.js
+@@ -1,6 +1,6 @@
+ import React from "react";
+ 
+-export default AdminContent = ({ children, title="", headerActions=[], footer, ...props }) => {
++const AdminContent = ({ children, title="", headerActions=[], footer, ...props }) => {
+   return (
+     <React.Fragment>
+       <div className="card shadow mb-4">
+@@ -34,3 +34,5 @@ export default AdminContent = ({ children, title="", headerActions=[], footer, .
+     </React.Fragment>
+   )
+ }
++
++export default AdminContent;
+diff --git a/src/js/commons/ConfirmationModal.js b/src/js/commons/ConfirmationModal.js
+index 1d0639a..88bfb81 100644
+--- a/src/js/commons/ConfirmationModal.js
++++ b/src/js/commons/ConfirmationModal.js
+@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+ import { faCheck, faXmark } from "@fortawesome/free-solid-svg-icons";
+ import Loader from "./Loader";
+ 
+-export default ConfirmationModal = (props) => {
++const ConfirmationModal = (props) => {
+   return (
+     <Modal
+       show={props.show}
+@@ -45,3 +45,5 @@ export default ConfirmationModal = (props) => {
+     </Modal>
+   )
+ }
++
++export default ConfirmationModal;
+diff --git a/src/js/commons/Loader.js b/src/js/commons/Loader.js
+index a241996..f012803 100644
+--- a/src/js/commons/Loader.js
++++ b/src/js/commons/Loader.js
+@@ -1,9 +1,11 @@
+ import React from "react";
+ 
+-export default Loader = () => {
++const Loader = () => {
+   return (
+     <div className="loader-container d-flex align-items-center justify-content-center">
+       <div className="loader"/>
+     </div>
+   )
+ }
++
++export default Loader;
+diff --git a/package-lock.json b/package-lock.json
+index c11a6a9..26f290b 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -997,9 +997,9 @@
+       }
+     },
+     "node_modules/axios": {
+-      "version": "1.19.0",
+-      "resolved": "https://registry.npmjs.org/axios/-/axios-1.19.0.tgz",
+-      "integrity": "sha512-ht/iuYZXEjFxLH/Hkezgd7m6JKlHHXEUSneaDz8uZe1Gj5QZtCnpyDsckvAiEnT89OEbCLmnte4R4sn7P0EKFw==",
++      "version": "1.20.0",
++      "resolved": "https://registry.npmjs.org/axios/-/axios-1.20.0.tgz",
++      "integrity": "sha512-r8aOh8j9cGKpgQAqpzrUHnSIc6a59Y3Xf/cv8sy1DrHCkZHzQGEuoq1tARk6qSyDdtQGSDgpb9kFlruzPvrgwg==",
+       "license": "MIT",
+       "dependencies": {
+         "follow-redirects": "^1.16.0",
+@@ -2313,9 +2313,9 @@
+       }
+     },
+     "node_modules/proxy-addr": {
+-      "version": "2.0.7",
+-      "resolved": "https://registry.npmjs.org/proxy-addr/-/proxy-addr-2.0.7.tgz",
+-      "integrity": "sha512-llQsMLSUDUPT44jdrU/O37qlnifitDP+ZwrmmZcoSKyLKvtZxpyV0n2/bD/N4tBAAZ/gJEdZU7KMraoK1+XYAg==",
++      "version": "2.0.8",
++      "resolved": "https://registry.npmjs.org/proxy-addr/-/proxy-addr-2.0.8.tgz",
++      "integrity": "sha512-5nnx0yGyVUcY6t9RnWcARWtwT9F1D8O9rt08htPvnd49W1IgZtmLkhu9WfMzQj1cFxjHIO6connUNVW5k7AVyQ==",
+       "license": "MIT",
+       "dependencies": {
+         "forwarded": "0.2.0",
+@@ -2323,6 +2323,10 @@
+       },
+       "engines": {
+         "node": ">= 0.10"
++      },
++      "funding": {
++        "type": "opencollective",
++        "url": "https://opencollective.com/express"
+       }
+     },
+     "node_modules/proxy-from-env": {
+@@ -2335,9 +2339,9 @@
+       }
+     },
+     "node_modules/qs": {
+-      "version": "6.15.3",
+-      "resolved": "https://registry.npmjs.org/qs/-/qs-6.15.3.tgz",
+-      "integrity": "sha512-O9gl3zCl5h5blw1KGUzQKhA5oUXSl8rwUIM5o0S3nCXMliSvy5Dzx7/DJcI+SwgICv+IneSZwhBh1oSyEHA71A==",
++      "version": "6.16.1",
++      "resolved": "https://registry.npmjs.org/qs/-/qs-6.16.1.tgz",
++      "integrity": "sha512-5Px6J7rfHBAGUhNQ3es4YzcOdBBw0SDcVtThJml4RdnKw4tKs2epA0kPZ+K8X+WiHktT93RHVcQ/3ym5aTCgtg==",
+       "license": "BSD-3-Clause",
+       "dependencies": {
+         "es-define-property": "^1.0.1",
+@@ -3106,9 +3110,9 @@
+       }
+     },
+     "node_modules/source-map-js": {
+-      "version": "1.2.1",
+-      "resolved": "https://registry.npmjs.org/source-map-js/-/source-map-js-1.2.1.tgz",
+-      "integrity": "sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==",
++      "version": "1.2.2",
++      "resolved": "https://registry.npmjs.org/source-map-js/-/source-map-js-1.2.2.tgz",
++      "integrity": "sha512-KGj/8Y43x35aZVDtt+J4mK1hoLGHULMYfSkODJNQjNDC3oW1PqPoxMwo0pLUsWM/UEGzON/NxeHywEfNXNP3Vw==",
+       "license": "BSD-3-Clause",
+       "engines": {
+         "node": ">=0.10.0"

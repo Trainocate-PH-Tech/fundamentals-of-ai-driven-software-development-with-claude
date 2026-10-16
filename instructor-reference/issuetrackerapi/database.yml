@@ -1,0 +1,9 @@
+development:
+  adapter: sqlite
+  database: storage/development.sqlite3
+test:
+  adapter: sqlite
+  database: test.sqlite3
+production:
+  adapter: sqlite
+  database: /data/production.sqlite3

@@ -1,0 +1,5 @@
+{
+  "name": "issue-tracker-workshop",
+  "version": "0.1.0",
+  "description": "Local workshop example containing a read-only plan-check skill."
+}

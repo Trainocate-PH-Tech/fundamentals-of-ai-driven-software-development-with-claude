@@ -1,0 +1,41 @@
+name: Workshop reference
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install and start PostgreSQL
+        run: |
+          ./workshop --reference setup
+          ./workshop --reference db up
+          ./workshop --reference db migrate
+          ./workshop --reference db seed
+      - name: Verify backend, build, and tooling
+        run: |
+          ./workshop --reference test
+          ./workshop --reference build
+          python3 -m unittest discover -s tools/tests
+          python3 tools/check_docs.py
+          python3 05-testing-debugging-and-demo/examples/hooks/test_check_python_syntax.py
+      - name: Browser acceptance
+        run: |
+          cd instructor-reference/issuetrackerweb
+          npx playwright install --with-deps chromium
+          cd ../..
+          ./workshop --reference start api > /tmp/api.log 2>&1 &
+          ./workshop --reference start web > /tmp/web.log 2>&1 &
+          python3 tools/wait_servers.py http://localhost:3001/docs http://localhost:8001
+          ./workshop --reference e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-failure
+          path: instructor-reference/issuetrackerweb/test-results

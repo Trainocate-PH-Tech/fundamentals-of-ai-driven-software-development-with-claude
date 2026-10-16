@@ -1,0 +1,110 @@
+diff --git a/app/cli.py b/app/cli.py
+index 6a6f5b8..5b27ec9 100644
+--- a/app/cli.py
++++ b/app/cli.py
+@@ -123,9 +123,7 @@ def run_server(args):
+ 
+ 
+ def run_spec(args):
+-    command = ["pytest", "spec"]
+-    if args.target:
+-        command.append(args.target)
++    command = [sys.executable, "-m", "pytest", args.target or "spec"]
+     if args.keyword:
+         command.extend(["-k", args.keyword])
+ 
+diff --git a/requirements.lock.txt b/requirements.lock.txt
+new file mode 100644
+index 0000000..6033e67
+--- /dev/null
++++ b/requirements.lock.txt
+@@ -0,0 +1,47 @@
++alembic==1.20.0
++annotated-doc==0.0.5
++annotated-types==0.8.0
++anyio==4.15.1
++boto3==1.43.114
++botocore==1.43.114
++click==8.5.0
++factory_boy==3.3.3
++Faker==40.43.0
++fastapi==0.143.2
++gunicorn==26.2.0
++h11==0.16.0
++httpcore2==2.13.1
++httptools==0.9.0
++httpx2==2.13.1
++idna==3.20
++iniconfig==2.3.1
++jmespath==1.1.0
++Mako==1.4.3
++MarkupSafe==3.0.4
++opentelemetry-api==1.45.1
++packaging==26.3
++pluggy==1.7.0
++psycopg==3.3.6
++psycopg-binary==3.3.6
++pydantic==2.14.1
++pydantic_core==2.50.1
++Pygments==2.21.0
++PyJWT==2.15.1
++pytest==9.1.1
++python-dateutil==2.9.0.post0
++python-dotenv==1.2.4
++python-multipart==0.0.32
++PyYAML==6.0.3
++s3transfer==0.19.2
++six==1.17.0
++SQLAlchemy==2.1.4
++starlette==1.8.0
++truststore==0.10.5
++typing-inspection==0.4.4
++typing_extensions==4.16.0
++urllib3==2.8.0
++uvicorn==0.54.0
++uvloop==0.23.0
++watchfiles==1.3.0
++websockets==17.2
++Werkzeug==3.1.9
+diff --git a/spec/conftest.py b/spec/conftest.py
+index 4d55a92..1e9d793 100644
+--- a/spec/conftest.py
++++ b/spec/conftest.py
+@@ -16,6 +16,10 @@ from spec.factories import UserFactory  # noqa: E402
+ @pytest.fixture()
+ def app():
+     application = create_app("spec.settings.TestConfig")
++    # Fixtures drop tables. Never permit a non-test PostgreSQL target.
++    if db.engine.url.get_backend_name() == "postgresql":
++        if not (db.engine.url.database or "").endswith("_test"):
++            raise RuntimeError("Refusing destructive fixtures: database must end in _test")
+     Base.metadata.create_all(bind=db.engine)
+     yield application
+     Base.metadata.drop_all(bind=db.engine)
+diff --git a/spec/system/test_test_environment.py b/spec/system/test_test_environment.py
+index 98de657..20e5dbd 100644
+--- a/spec/system/test_test_environment.py
++++ b/spec/system/test_test_environment.py
+@@ -6,5 +6,8 @@ from sqlalchemy.engine import make_url
+ def test_test_environment_is_isolated_from_development(app):
+     database_url = make_url(app.state.settings.SQLALCHEMY_DATABASE_URI)
+ 
+-    assert database_url.database == "test.sqlite3"
++    assert database_url.database == "test.sqlite3" or (
++        database_url.get_backend_name() == "postgresql"
++        and database_url.database.endswith("_test")
++    )
+     assert Path(app.state.settings.STORAGE_LOCAL_ROOT) == Path("storage_test")
+diff --git a/spec/database/test_configuration.py b/spec/database/test_configuration.py
+index 6268b2d..c0537d0 100644
+--- a/spec/database/test_configuration.py
++++ b/spec/database/test_configuration.py
+@@ -100,7 +100,7 @@ def test_explicit_environment_and_postgres_alias(tmp_path, monkeypatch):
+     )
+     monkeypatch.setenv("APP_ENV", "development")
+     assert make_url(config.resolve_database_uri()).database == "example_development"
+-    assert config.resolve_database_uri("test") == "sqlite:///:memory:"
++    assert make_url(config.resolve_database_uri("test")).database == ":memory:"
+ 
+ 
+ def test_missing_configuration_file(tmp_path, monkeypatch):

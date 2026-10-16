@@ -1,0 +1,718 @@
+diff --git a/alembic/env.py b/alembic/env.py
+index 42e14a2..8f28197 100644
+--- a/alembic/env.py
++++ b/alembic/env.py
+@@ -10,7 +10,7 @@ from app.db import Base
+ load_environment()
+ 
+ from config import Config  # noqa: E402
+-from app.models import user  # noqa: F401,E402
++from app.models import user, tracker  # noqa: F401,E402
+ 
+ 
+ config = context.config
+diff --git a/alembic/versions/0003_tracker.py b/alembic/versions/0003_tracker.py
+new file mode 100644
+index 0000000..ddf58a0
+--- /dev/null
++++ b/alembic/versions/0003_tracker.py
+@@ -0,0 +1,39 @@
++"""Category and Issue persistence; existing users are preserved."""
++from alembic import op
++import sqlalchemy as sa
++
++revision = "0003_tracker"
++down_revision = "0002_add_role_to_users"
++branch_labels = None
++depends_on = None
++
++
++def upgrade():
++    op.create_table("categories",
++        sa.Column("id", sa.String(36), primary_key=True),
++        sa.Column("name", sa.String(100), nullable=False),
++        sa.Column("description", sa.Text()),
++        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
++        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
++        sa.CheckConstraint("length(trim(name)) > 0", name="ck_category_nonblank"))
++    op.create_index("uq_categories_name_lower", "categories", [sa.text("lower(name)")], unique=True)
++    op.create_table("issues",
++        sa.Column("id", sa.String(36), primary_key=True),
++        sa.Column("title", sa.String(200), nullable=False),
++        sa.Column("description", sa.Text()),
++        sa.Column("status", sa.String(20), nullable=False),
++        sa.Column("priority", sa.String(20), nullable=False),
++        sa.Column("category_id", sa.String(36), sa.ForeignKey("categories.id", ondelete="RESTRICT"), nullable=False),
++        sa.Column("assigned_user_id", sa.String(36), sa.ForeignKey("users.id", ondelete="SET NULL")),
++        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
++        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
++        sa.CheckConstraint("status IN ('open','in_progress','resolved','closed')", name="ck_issue_status"),
++        sa.CheckConstraint("priority IN ('low','medium','high','critical')", name="ck_issue_priority"),
++        sa.CheckConstraint("length(trim(title)) > 0", name="ck_issue_nonblank"))
++    op.create_index("ix_issues_category_id", "issues", ["category_id"])
++    op.create_index("ix_issues_assigned_user_id", "issues", ["assigned_user_id"])
++
++
++def downgrade():
++    op.drop_table("issues")
++    op.drop_table("categories")
+diff --git a/app/cli.py b/app/cli.py
+index 6a6f5b8..5b27ec9 100644
+--- a/app/cli.py
++++ b/app/cli.py
+@@ -123,9 +123,7 @@ def run_server(args):
+ 
+ 
+ def run_spec(args):
+-    command = ["pytest", "spec"]
+-    if args.target:
+-        command.append(args.target)
++    command = [sys.executable, "-m", "pytest", args.target or "spec"]
+     if args.keyword:
+         command.extend(["-k", args.keyword])
+ 
+diff --git a/app/controllers/assignees_controller.py b/app/controllers/assignees_controller.py
+new file mode 100644
+index 0000000..c815d73
+--- /dev/null
++++ b/app/controllers/assignees_controller.py
+@@ -0,0 +1,14 @@
++from fastapi import APIRouter, Depends
++from sqlalchemy import select
++from sqlalchemy.orm import Session
++from app.db import get_db
++from app.dependencies.auth import require_active_user
++from app.models.user import User
++
++router=APIRouter(prefix='/assignees',tags=['assignees'],dependencies=[Depends(require_active_user)])
++
++
++@router.get('')
++def index(session:Session=Depends(get_db)):
++    users=session.scalars(select(User).where(User.status!='deleted').order_by(User.last_name,User.first_name,User.id)).all()
++    return [{'id':user.id,'full_name':user.full_name()} for user in users]
+diff --git a/app/controllers/categories_controller.py b/app/controllers/categories_controller.py
+new file mode 100644
+index 0000000..6078349
+--- /dev/null
++++ b/app/controllers/categories_controller.py
+@@ -0,0 +1,78 @@
++from fastapi import APIRouter, Depends, HTTPException, Query, Response
++from sqlalchemy import func, select
++from sqlalchemy.exc import IntegrityError
++from sqlalchemy.orm import Session
++from app.db import get_db
++from app.dependencies.auth import require_active_user
++from app.models.tracker import Category, Issue
++from app.schemas.tracker import CategoryCreate, CategoryUpdate
++
++router = APIRouter(prefix="/categories", tags=["categories"], dependencies=[Depends(require_active_user)])
++
++
++def category_dict(category):
++    return {key: getattr(category, key) for key in ["id", "name", "description", "created_at", "updated_at"]}
++
++
++def find_category(session, category_id):
++    category = session.get(Category, category_id)
++    if category is None:
++        raise HTTPException(404, "Category not found")
++    return category
++
++
++def save_category(session, category):
++    duplicate = session.scalar(select(Category.id).where(
++        func.lower(Category.name) == category.name.lower(), Category.id != category.id
++    )) if category.id else session.scalar(select(Category.id).where(func.lower(Category.name) == category.name.lower()))
++    if duplicate:
++        raise HTTPException(409, "Category name already exists")
++    session.add(category)
++    try:
++        session.commit()
++    except IntegrityError:
++        session.rollback()
++        raise HTTPException(409, "Category name already exists") from None
++    session.refresh(category)
++    return category_dict(category)
++
++
++@router.get("")
++def index(page: int = Query(1, ge=1), per_page: int = Query(20, ge=1, le=100), session: Session = Depends(get_db)):
++    total = session.scalar(select(func.count()).select_from(Category))
++    pages = max(1, (total + per_page - 1) // per_page)
++    records = session.scalars(select(Category).order_by(func.lower(Category.name), Category.id).offset((page-1)*per_page).limit(per_page)).all()
++    return {"records": [category_dict(c) for c in records], "current_page": page, "total_pages": pages,
++            "next_page": page+1 if page < pages else None, "prev_page": page-1 if page > 1 else None}
++
++
++@router.post("", status_code=201)
++def create(payload: CategoryCreate, session: Session = Depends(get_db)):
++    return save_category(session, Category(**payload.model_dump()))
++
++
++@router.get("/{category_id}")
++def show(category_id: str, session: Session = Depends(get_db)):
++    return category_dict(find_category(session, category_id))
++
++
++@router.patch("/{category_id}")
++def update(category_id: str, payload: CategoryUpdate, session: Session = Depends(get_db)):
++    category = find_category(session, category_id)
++    for key, value in payload.model_dump(exclude_unset=True).items():
++        setattr(category, key, value)
++    return save_category(session, category)
++
++
++@router.delete("/{category_id}", status_code=204)
++def delete(category_id: str, session: Session = Depends(get_db)):
++    category = find_category(session, category_id)
++    if session.scalar(select(Issue.id).where(Issue.category_id == category_id).limit(1)):
++        raise HTTPException(409, "Category is used by issues and cannot be deleted")
++    session.delete(category)
++    try:
++        session.commit()
++    except IntegrityError:
++        session.rollback()
++        raise HTTPException(409, "Category is used by issues and cannot be deleted") from None
++    return Response(status_code=204)
+diff --git a/app/controllers/issues_controller.py b/app/controllers/issues_controller.py
+new file mode 100644
+index 0000000..037f1ed
+--- /dev/null
++++ b/app/controllers/issues_controller.py
+@@ -0,0 +1,85 @@
++from fastapi import APIRouter, Depends, HTTPException, Query, Response
++from sqlalchemy import func, select
++from sqlalchemy.exc import IntegrityError
++from sqlalchemy.orm import Session
++from app.db import get_db
++from app.dependencies.auth import require_active_user
++from app.models.tracker import Category, Issue
++from app.models.user import User
++from app.schemas.tracker import IssueCreate, IssueUpdate, Status, Priority
++
++router = APIRouter(prefix="/issues", tags=["issues"], dependencies=[Depends(require_active_user)])
++
++
++def issue_dict(issue):
++    result = {key: getattr(issue,key) for key in ['id','title','description','status','priority','category_id','assigned_user_id','created_at','updated_at']}
++    result['category'] = {'id':issue.category.id,'name':issue.category.name}
++    result['assigned_user'] = {'id':issue.assigned_user.id,'full_name':issue.assigned_user.full_name()} if issue.assigned_user else None
++    return result
++
++
++def find_issue(session, issue_id):
++    issue=session.get(Issue,issue_id)
++    if issue is None: raise HTTPException(404,'Issue not found')
++    return issue
++
++
++def validate_references(session, data):
++    if 'category_id' in data and session.get(Category,data['category_id']) is None:
++        raise HTTPException(404,'Category not found')
++    if data.get('assigned_user_id') is not None:
++        user=session.get(User,data['assigned_user_id'])
++        if user is None or user.deleted(): raise HTTPException(404,'Assigned user not found')
++
++
++def save_issue(session, issue):
++    session.add(issue)
++    try: session.commit()
++    except IntegrityError:
++        session.rollback()
++        raise HTTPException(409,'Referenced record changed; refresh and try again') from None
++    session.refresh(issue)
++    return issue_dict(issue)
++
++
++@router.get('')
++def index(page: int = Query(1,ge=1),per_page: int = Query(20,ge=1,le=100),
++          search: str | None = None,status: Status | None = None,priority: Priority | None = None,
++          category_id: str | None = None,assigned_user_id: str | None = None,
++          session: Session=Depends(get_db)):
++    stmt=select(Issue)
++    if search:
++        escaped=search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
++        stmt=stmt.where(Issue.title.ilike(f"%{escaped}%",escape="\\"))
++    for key,value in [('status',status),('priority',priority),('category_id',category_id),('assigned_user_id',assigned_user_id)]:
++        if value is not None: stmt=stmt.where(getattr(Issue,key)==value)
++    total=session.scalar(select(func.count()).select_from(stmt.subquery()))
++    pages=max(1,(total+per_page-1)//per_page)
++    records=session.scalars(stmt.order_by(Issue.updated_at.desc(),Issue.id).offset((page-1)*per_page).limit(per_page)).all()
++    return {'records':[issue_dict(x) for x in records],'current_page':page,'total_pages':pages,
++            'next_page':page+1 if page<pages else None,'prev_page':page-1 if page>1 else None}
++
++
++@router.post('',status_code=201)
++def create(payload:IssueCreate,session:Session=Depends(get_db)):
++    data=payload.model_dump();validate_references(session,data)
++    return save_issue(session,Issue(**data))
++
++
++@router.get('/{issue_id}')
++def show(issue_id:str,session:Session=Depends(get_db)):
++    return issue_dict(find_issue(session,issue_id))
++
++
++@router.patch('/{issue_id}')
++def update(issue_id:str,payload:IssueUpdate,session:Session=Depends(get_db)):
++    issue=find_issue(session,issue_id)
++    data=payload.model_dump(exclude_unset=True);validate_references(session,data)
++    for key,value in data.items():setattr(issue,key,value)
++    return save_issue(session,issue)
++
++
++@router.delete('/{issue_id}',status_code=204)
++def delete(issue_id:str,session:Session=Depends(get_db)):
++    session.delete(find_issue(session,issue_id));session.commit()
++    return Response(status_code=204)
+diff --git a/app/db.py b/app/db.py
+index 116596a..42c1e74 100644
+--- a/app/db.py
++++ b/app/db.py
+@@ -1,4 +1,4 @@
+-from sqlalchemy import create_engine
++from sqlalchemy import create_engine, event
+ from sqlalchemy.engine import make_url
+ from sqlalchemy.orm import DeclarativeBase, sessionmaker
+ from sqlalchemy.pool import StaticPool
+@@ -28,6 +28,10 @@ class DatabaseManager:
+             if in_memory:
+                 options["poolclass"] = StaticPool
+         self.engine = create_engine(url, future=True, **options)
++        if url.get_backend_name() == "sqlite":
++            @event.listens_for(self.engine, "connect")
++            def enforce_foreign_keys(connection, _record):
++                connection.execute("PRAGMA foreign_keys=ON")
+         self.session_factory = sessionmaker(
+             bind=self.engine,
+             autoflush=False,
+diff --git a/app/models/__init__.py b/app/models/__init__.py
+index b2e47e8..6314252 100644
+--- a/app/models/__init__.py
++++ b/app/models/__init__.py
+@@ -1,3 +1,5 @@
+ from app.models.user import User
+ 
+ __all__ = ["User"]
++
++from app.models.tracker import Category, Issue
+diff --git a/app/models/tracker.py b/app/models/tracker.py
+new file mode 100644
+index 0000000..891f93b
+--- /dev/null
++++ b/app/models/tracker.py
+@@ -0,0 +1,39 @@
++from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, Text, func
++from sqlalchemy.orm import Mapped, mapped_column, relationship
++from app.db import Base
++from app.models.user import User, utcnow
++from uuid import uuid4
++from datetime import datetime
++
++
++class Category(Base):
++    __tablename__ = "categories"
++    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
++    name: Mapped[str] = mapped_column(String(100), nullable=False)
++    description: Mapped[str | None] = mapped_column(Text)
++    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
++    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
++    __table_args__ = (
++        Index("uq_categories_name_lower", func.lower(name), unique=True),
++        CheckConstraint("length(trim(name)) > 0", name="ck_category_nonblank"),
++    )
++
++
++class Issue(Base):
++    __tablename__ = "issues"
++    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
++    title: Mapped[str] = mapped_column(String(200), nullable=False)
++    description: Mapped[str | None] = mapped_column(Text)
++    status: Mapped[str] = mapped_column(String(20), nullable=False, default="open")
++    priority: Mapped[str] = mapped_column(String(20), nullable=False, default="medium")
++    category_id: Mapped[str] = mapped_column(ForeignKey("categories.id", ondelete="RESTRICT"), index=True)
++    assigned_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
++    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
++    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
++    category: Mapped[Category] = relationship(lazy="selectin")
++    assigned_user: Mapped[User | None] = relationship(lazy="selectin")
++    __table_args__ = (
++        CheckConstraint("status IN ('open','in_progress','resolved','closed')", name="ck_issue_status"),
++        CheckConstraint("priority IN ('low','medium','high','critical')", name="ck_issue_priority"),
++        CheckConstraint("length(trim(title)) > 0", name="ck_issue_nonblank"),
++    )
+diff --git a/app/routes.py b/app/routes.py
+index e370d1b..e3bb35f 100644
+--- a/app/routes.py
++++ b/app/routes.py
+@@ -6,10 +6,22 @@ from app.controllers.uploads_controller import router as uploads_router
+ from app.controllers.users_controller import router as users_router
+ 
+ 
++from app.controllers.categories_controller import router as categories_router
++
++
++from app.controllers.issues_controller import router as issues_router
++
++
++from app.controllers.assignees_controller import router as assignees_router
++
++
+ def register_routes(app: FastAPI):
+     api_router = APIRouter(prefix=app.state.settings.API_PREFIX)
+     api_router.include_router(health_router)
+     api_router.include_router(system_router)
+     api_router.include_router(users_router)
+     api_router.include_router(uploads_router)
++    api_router.include_router(categories_router)
++    api_router.include_router(issues_router)
++    api_router.include_router(assignees_router)
+     app.include_router(api_router)
+diff --git a/app/schemas/tracker.py b/app/schemas/tracker.py
+new file mode 100644
+index 0000000..250cd61
+--- /dev/null
++++ b/app/schemas/tracker.py
+@@ -0,0 +1,62 @@
++from enum import StrEnum
++from pydantic import BaseModel, ConfigDict, Field, field_validator
++
++
++class Status(StrEnum):
++    open = "open"
++    in_progress = "in_progress"
++    resolved = "resolved"
++    closed = "closed"
++
++
++class Priority(StrEnum):
++    low = "low"
++    medium = "medium"
++    high = "high"
++    critical = "critical"
++
++
++class TrackerInput(BaseModel):
++    model_config = ConfigDict(extra="forbid")
++
++    @field_validator("name", "title", mode="before", check_fields=False)
++    @classmethod
++    def nonblank(cls, value):
++        if not isinstance(value, str) or not value.strip():
++            raise ValueError("Must not be blank")
++        return value.strip()
++
++    @field_validator("category_id", "status", "priority", mode="before", check_fields=False)
++    @classmethod
++    def required_when_supplied(cls, value):
++        if value is None:
++            raise ValueError("Must not be null")
++        return value
++
++
++class CategoryCreate(TrackerInput):
++    name: str = Field(max_length=100)
++    description: str | None = Field(default=None, max_length=500)
++
++
++class CategoryUpdate(TrackerInput):
++    name: str | None = Field(default=None, max_length=100)
++    description: str | None = Field(default=None, max_length=500)
++
++
++class IssueCreate(TrackerInput):
++    title: str = Field(max_length=200)
++    description: str | None = Field(default=None, max_length=5000)
++    status: Status = Status.open
++    priority: Priority = Priority.medium
++    category_id: str
++    assigned_user_id: str | None = None
++
++
++class IssueUpdate(TrackerInput):
++    title: str | None = Field(default=None, max_length=200)
++    description: str | None = Field(default=None, max_length=5000)
++    status: Status | None = None
++    priority: Priority | None = None
++    category_id: str | None = None
++    assigned_user_id: str | None = None
+diff --git a/app/seed_tracker.py b/app/seed_tracker.py
+new file mode 100644
+index 0000000..479f10f
+--- /dev/null
++++ b/app/seed_tracker.py
+@@ -0,0 +1,19 @@
++"""Idempotent sample categories, independent of user seeding."""
++from sqlalchemy import func, select
++from app.models.tracker import Category
++
++
++def seed_categories(session):
++    for name in ["Bug", "Feature Request", "Task", "Documentation"]:
++        if not session.scalar(select(Category).where(func.lower(Category.name) == name.lower())):
++            session.add(Category(name=name))
++    session.commit()
++
++
++if __name__ == "__main__":
++    from app import create_app
++    from app.db import db
++    create_app()
++    with db.session() as session:
++        seed_categories(session)
++    print("Sample categories ready.")
+diff --git a/requirements.lock.txt b/requirements.lock.txt
+new file mode 100644
+index 0000000..6033e67
+--- /dev/null
++++ b/requirements.lock.txt
+@@ -0,0 +1,47 @@
++alembic==1.20.0
++annotated-doc==0.0.5
++annotated-types==0.8.0
++anyio==4.15.1
++boto3==1.43.114
++botocore==1.43.114
++click==8.5.0
++factory_boy==3.3.3
++Faker==40.43.0
++fastapi==0.143.2
++gunicorn==26.2.0
++h11==0.16.0
++httpcore2==2.13.1
++httptools==0.9.0
++httpx2==2.13.1
++idna==3.20
++iniconfig==2.3.1
++jmespath==1.1.0
++Mako==1.4.3
++MarkupSafe==3.0.4
++opentelemetry-api==1.45.1
++packaging==26.3
++pluggy==1.7.0
++psycopg==3.3.6
++psycopg-binary==3.3.6
++pydantic==2.14.1
++pydantic_core==2.50.1
++Pygments==2.21.0
++PyJWT==2.15.1
++pytest==9.1.1
++python-dateutil==2.9.0.post0
++python-dotenv==1.2.4
++python-multipart==0.0.32
++PyYAML==6.0.3
++s3transfer==0.19.2
++six==1.17.0
++SQLAlchemy==2.1.4
++starlette==1.8.0
++truststore==0.10.5
++typing-inspection==0.4.4
++typing_extensions==4.16.0
++urllib3==2.8.0
++uvicorn==0.54.0
++uvloop==0.23.0
++watchfiles==1.3.0
++websockets==17.2
++Werkzeug==3.1.9
+diff --git a/spec/conftest.py b/spec/conftest.py
+index 4d55a92..1e9d793 100644
+--- a/spec/conftest.py
++++ b/spec/conftest.py
+@@ -16,6 +16,10 @@ from spec.factories import UserFactory  # noqa: E402
+ @pytest.fixture()
+ def app():
+     application = create_app("spec.settings.TestConfig")
++    # Fixtures drop tables. Never permit a non-test PostgreSQL target.
++    if db.engine.url.get_backend_name() == "postgresql":
++        if not (db.engine.url.database or "").endswith("_test"):
++            raise RuntimeError("Refusing destructive fixtures: database must end in _test")
+     Base.metadata.create_all(bind=db.engine)
+     yield application
+     Base.metadata.drop_all(bind=db.engine)
+diff --git a/spec/system/test_test_environment.py b/spec/system/test_test_environment.py
+index 98de657..20e5dbd 100644
+--- a/spec/system/test_test_environment.py
++++ b/spec/system/test_test_environment.py
+@@ -6,5 +6,8 @@ from sqlalchemy.engine import make_url
+ def test_test_environment_is_isolated_from_development(app):
+     database_url = make_url(app.state.settings.SQLALCHEMY_DATABASE_URI)
+ 
+-    assert database_url.database == "test.sqlite3"
++    assert database_url.database == "test.sqlite3" or (
++        database_url.get_backend_name() == "postgresql"
++        and database_url.database.endswith("_test")
++    )
+     assert Path(app.state.settings.STORAGE_LOCAL_ROOT) == Path("storage_test")
+diff --git a/spec/tracker/test_assignment.py b/spec/tracker/test_assignment.py
+new file mode 100644
+index 0000000..072c177
+--- /dev/null
++++ b/spec/tracker/test_assignment.py
+@@ -0,0 +1,20 @@
++from app.models.tracker import Category
++from spec.factories import UserFactory
++
++
++def test_assign_omit_null_invalid(client,auth_headers,user_auth_headers,db_session):
++    user=UserFactory();category=Category(name='Bug');db_session.add(category);db_session.commit()
++    response=client.post('/issues',headers=auth_headers,json={'title':'Example','category_id':category.id,'assigned_user_id':user.id})
++    assert response.status_code==201
++    issue=response.json();url='/issues/'+issue['id']
++    assert set(issue['assigned_user'])=={'id','full_name'}
++    assert client.patch(url,headers=auth_headers,json={'title':'Other'}).json()['assigned_user_id']==user.id
++    assert client.patch(url,headers=auth_headers,json={'assigned_user_id':'missing'}).status_code==404
++    assert client.get(url,headers=auth_headers).json()['assigned_user_id']==user.id
++    assert client.patch(url,headers=auth_headers,json={'assigned_user_id':None}).json()['assigned_user_id'] is None
++    assert client.get(url,headers=auth_headers).json()['assigned_user'] is None
++    assert client.get('/assignees').status_code==401
++    options=client.get('/assignees',headers=user_auth_headers).json()
++    assert any(x['id']==user.id for x in options)
++    assert all(set(x)=={'id','full_name'} for x in options)
++    assert client.get('/users',headers=user_auth_headers).status_code==403
+diff --git a/spec/tracker/test_categories.py b/spec/tracker/test_categories.py
+new file mode 100644
+index 0000000..869ffa7
+--- /dev/null
++++ b/spec/tracker/test_categories.py
+@@ -0,0 +1,47 @@
++import pytest
++from sqlalchemy import select
++from sqlalchemy.exc import IntegrityError
++from app.models.tracker import Category, Issue
++from app.seed_tracker import seed_categories
++
++
++def test_crud_and_case_insensitive_uniqueness(client, auth_headers):
++    response = client.post('/categories', headers=auth_headers, json={'name':' Bug '})
++    assert response.status_code == 201
++    category = response.json()
++    assert category['name'] == 'Bug'
++    assert client.post('/categories', headers=auth_headers, json={'name':'bUg'}).status_code == 409
++    assert client.get('/categories/'+category['id'],headers=auth_headers).json()['name'] == 'Bug'
++    response = client.patch('/categories/'+category['id'],headers=auth_headers,json={'name':'Defect','description':'test'})
++    assert response.status_code == 200
++    assert response.json()['description']=='test'
++    assert client.get('/categories',headers=auth_headers).json()['records'][0]['name']=='Defect'
++    response = client.delete('/categories/'+category['id'],headers=auth_headers)
++    assert response.status_code==204 and response.content==b''
++    assert client.get('/categories/'+category['id'],headers=auth_headers).status_code==404
++
++
++@pytest.mark.parametrize('payload',[{'name':''},{'name':'  '},{'name':None},{'name':'a'*101},{'name':'Bug','description':'x'*501},{}])
++def test_validation(client,auth_headers,payload):
++    assert client.post('/categories',headers=auth_headers,json=payload).status_code==422
++
++
++def test_integrity_and_protected_deletion(client,auth_headers,db_session):
++    category=Category(name='Bug');db_session.add(category);db_session.commit()
++    issue=Issue(title='Example',category_id=category.id);db_session.add(issue);db_session.commit()
++    assert client.delete('/categories/'+category.id,headers=auth_headers).status_code==409
++    assert db_session.get(Issue,issue.id)
++    assert client.patch('/categories/'+category.id,headers=auth_headers,json={'name':'Defect'}).status_code==200
++    db_session.expire_all();assert db_session.get(Issue,issue.id).category_id==category.id
++    db_session.add(Category(name='DEFECT'))
++    with pytest.raises(IntegrityError): db_session.commit()
++    db_session.rollback()
++
++
++def test_auth_pagination_and_seed(client,db_session,auth_headers):
++    assert client.get('/categories').status_code==401
++    seed_categories(db_session);seed_categories(db_session)
++    assert len(db_session.scalars(select(Category)).all())==4
++    response=client.get('/categories?per_page=100',headers=auth_headers).json()
++    assert [x['name'] for x in response['records']]==['Bug','Documentation','Feature Request','Task']
++    assert client.get('/categories?per_page=0',headers=auth_headers).status_code==422
+diff --git a/spec/tracker/test_filters.py b/spec/tracker/test_filters.py
+new file mode 100644
+index 0000000..b165c05
+--- /dev/null
++++ b/spec/tracker/test_filters.py
+@@ -0,0 +1,27 @@
++from datetime import datetime, timezone
++from app.models.tracker import Category, Issue
++from spec.factories import UserFactory
++
++
++def test_combined_filters_order_and_literal_search(client,auth_headers,db_session):
++    category=Category(name='Bug');other=Category(name='Task');db_session.add_all([category,other]);db_session.commit()
++    user=UserFactory();stamp=datetime(2025,1,1,tzinfo=timezone.utc)
++    a=Issue(id='a',title='Login 100% fail',category_id=category.id,status='in_progress',priority='high',assigned_user_id=user.id,updated_at=stamp)
++    b=Issue(id='b',title='LOGIN pending',category_id=category.id,status='open',priority='high',updated_at=stamp)
++    c=Issue(id='c',title='Other',category_id=other.id,status='in_progress',priority='low',updated_at=stamp)
++    db_session.add_all([a,b,c]);db_session.commit()
++    def ids(params):
++        response=client.get('/issues',headers=auth_headers,params=params);assert response.status_code==200
++        return [x['id'] for x in response.json()['records']]
++    assert ids({'search':'login'})==['a','b']
++    assert ids({'status':'in_progress'})==['a','c']
++    assert ids({'priority':'high'})==['a','b']
++    assert ids({'category_id':other.id})==['c']
++    assert ids({'assigned_user_id':user.id})==['a']
++    assert ids({'search':'LOGIN','status':'in_progress','priority':'high','category_id':category.id,'assigned_user_id':user.id})==['a']
++    assert ids({'status':'closed','priority':'high'})==[]
++    assert ids({'search':'%'})==['a']
++    assert ids({})==['a','b','c']
++    assert ids({'page':2,'per_page':2})==['c']
++    assert client.get('/issues?status=wrong',headers=auth_headers).status_code==422
++    assert client.get('/issues?per_page=0',headers=auth_headers).status_code==422
+diff --git a/spec/tracker/test_issues.py b/spec/tracker/test_issues.py
+new file mode 100644
+index 0000000..ee4c071
+--- /dev/null
++++ b/spec/tracker/test_issues.py
+@@ -0,0 +1,41 @@
++import pytest
++from app.models.tracker import Category
++
++
++@pytest.fixture
++def category(db_session):
++    item=Category(name='Bug');db_session.add(item);db_session.commit();return item
++
++
++def test_issue_lifecycle(client,auth_headers,category):
++    response=client.post('/issues',headers=auth_headers,json={'title':' Login broken ','category_id':category.id})
++    assert response.status_code==201
++    issue=response.json();assert issue['title']=='Login broken'
++    assert issue['status']=='open' and issue['priority']=='medium' and issue['assigned_user_id'] is None
++    assert issue['category']['name']=='Bug'
++    url='/issues/'+issue['id']
++    assert client.get(url,headers=auth_headers).status_code==200
++    for status in ['closed','in_progress','resolved','open']:
++        updated=client.patch(url,headers=auth_headers,json={'status':status,'description':'Details'}).json()
++        assert updated['status']==status and updated['title']=='Login broken'
++    assert client.get('/issues',headers=auth_headers).json()['records'][0]['id']==issue['id']
++    assert client.delete('/categories/'+category.id,headers=auth_headers).status_code==409
++    deleted=client.delete(url,headers=auth_headers);assert deleted.status_code==204 and deleted.content==b''
++    assert client.get(url,headers=auth_headers).status_code==404
++    assert client.delete('/categories/'+category.id,headers=auth_headers).status_code==204
++
++
++@pytest.mark.parametrize('change',[{'title':''},{'title':None},{'title':'x'*201},{'description':'x'*5001},
++ {'status':'wrong'},{'priority':'wrong'},{'category_id':None},{'status':None},{'priority':None}])
++def test_issue_validation(client,auth_headers,category,change):
++    payload={'title':'Example','category_id':category.id}
++    assert client.post('/issues',headers=auth_headers,json={**payload,**change}).status_code==422
++    issue=client.post('/issues',headers=auth_headers,json=payload).json()
++    assert client.patch('/issues/'+issue['id'],headers=auth_headers,json=change).status_code==422
++
++
++def test_issue_missing_reference_and_auth(client,auth_headers,user_auth_headers,category):
++    assert client.get('/issues').status_code==401
++    assert client.post('/issues',headers=auth_headers,json={'title':'Example','category_id':'missing'}).status_code==404
++    assert client.post('/issues',headers=user_auth_headers,json={'title':'Example','category_id':category.id}).status_code==201
++    assert client.patch('/issues/missing',headers=auth_headers,json={'title':'New'}).status_code==404
+diff --git a/spec/database/test_configuration.py b/spec/database/test_configuration.py
+index 6268b2d..c0537d0 100644
+--- a/spec/database/test_configuration.py
++++ b/spec/database/test_configuration.py
+@@ -100,7 +100,7 @@ def test_explicit_environment_and_postgres_alias(tmp_path, monkeypatch):
+     )
+     monkeypatch.setenv("APP_ENV", "development")
+     assert make_url(config.resolve_database_uri()).database == "example_development"
+-    assert config.resolve_database_uri("test") == "sqlite:///:memory:"
++    assert make_url(config.resolve_database_uri("test")).database == ":memory:"
+ 
+ 
+ def test_missing_configuration_file(tmp_path, monkeypatch):

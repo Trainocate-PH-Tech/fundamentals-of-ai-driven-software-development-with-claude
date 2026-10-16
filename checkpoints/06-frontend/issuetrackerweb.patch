@@ -1,0 +1,1124 @@
+diff --git a/.gitignore b/.gitignore
+index 92dc7ca..c1c567a 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -25,3 +25,6 @@ public/index.html
+ 
+ public/assets/**
+ public/index.html
++
++test-results/
++playwright-report/
+diff --git a/README.md b/README.md
+index 83f9594..fb9d329 100644
+--- a/README.md
++++ b/README.md
+@@ -23,7 +23,7 @@ npm install
+ 2. Copy `.env.dist` to `.env` and change values accordingly.
+ 
+ * `API_BASE_URL`: Backend server
+-* `TOKEN_KEY_BEARER`: Key for token (makes use of `localStorage`)
++* `TOKEN_BEARER`: Key for token (makes use of `localStorage`)
+ * `CURRENT_USER`: Key for the logged in user
+ 
+ 3. (optional) Run the mock server
+diff --git a/build.js b/build.js
+index bf548bc..8e688e6 100644
+--- a/build.js
++++ b/build.js
+@@ -5,7 +5,7 @@ import autoprefixer from 'autoprefixer';
+ import "dotenv/config";
+ import fs from 'fs';
+ 
+-const port = 8000;
++const port = Number(process.env.WEB_PORT || 8000);
+ const args = process.argv.slice(2);
+ const watch = args.includes("--watch");
+ const dev = args.includes("--dev");
+diff --git a/e2e/tracker.spec.js b/e2e/tracker.spec.js
+new file mode 100644
+index 0000000..1eef125
+--- /dev/null
++++ b/e2e/tracker.spec.js
+@@ -0,0 +1,104 @@
++import { test, expect } from "@playwright/test";
++test("category and issue lifecycle persists through real API and reload", async ({
++  page,
++}) => {
++  const suffix = Date.now(),
++    category = `Browser category ${suffix}`,
++    title = `Browser issue ${suffix}`;
++  const errors = [];
++  page.on("pageerror", (e) => errors.push(e.message));
++  await page.goto("/#/login");
++  await page.getByLabel("Email").fill("admin@example.com");
++  await page.getByLabel("Password").fill("password");
++  await page.getByRole("button", { name: /sign in|login/i }).click();
++  await page.getByRole("link", { name: "Categories", exact: true }).click();
++  await page.getByLabel("Name").fill(category);
++  await page.getByRole("button", { name: "Create category" }).click();
++  await expect(
++    page.getByRole("cell", { name: category, exact: true }),
++  ).toBeVisible();
++  await page.getByRole("link", { name: "Issues", exact: true }).click();
++  await page.getByRole("link", { name: "New issue" }).click();
++  await expect(
++    page.getByRole("heading", { name: "New issue", exact: true }),
++  ).toBeVisible();
++  await page.getByLabel("Title *", { exact: true }).fill(title);
++  await page.getByLabel("Category").selectOption({ label: category });
++  await page.getByLabel("Assignee").selectOption({ index: 1 });
++  await page.getByRole("button", { name: "Save issue" }).click();
++  await expect(page.getByRole("heading", { name: title })).toBeVisible();
++  await page.getByRole("link", { name: "Edit issue" }).click();
++  await page.getByLabel("Status").selectOption("in_progress");
++  await page.getByLabel("Priority").selectOption("high");
++  await page.getByRole("button", { name: "Save issue" }).click();
++  await expect(page.getByText("in progress", { exact: true })).toBeVisible();
++  await page.reload();
++  await expect(page.getByText("high", { exact: true })).toBeVisible();
++  await page.getByRole("link", { name: "Categories", exact: true }).click();
++  await page
++    .getByRole("row")
++    .filter({ has: page.getByRole("cell", { name: category, exact: true }) })
++    .getByRole("button", { name: "Delete" })
++    .click();
++  await page.getByRole("button", { name: "Confirm delete" }).click();
++  await expect(page.getByRole("alert")).toContainText(/issue|use/i);
++  await page.getByRole("link", { name: "Issues", exact: true }).click();
++  await page.getByLabel("Search title").fill(title);
++  await page.getByLabel("Status").selectOption("in_progress");
++  await page.getByLabel("Priority").selectOption("high");
++  await page.getByRole("button", { name: "Apply filters" }).click();
++  await page.getByRole("link", { name: title, exact: true }).click();
++  await page.getByRole("link", { name: "Edit issue" }).click();
++  await page.getByLabel("Category").selectOption({ label: "Bug" });
++  await page.getByLabel("Assignee").selectOption("");
++  await page.getByRole("button", { name: "Save issue" }).click();
++  await expect(
++    page.getByRole("heading", { name: title, exact: true }),
++  ).toBeVisible();
++  await page.reload();
++  await expect(page.getByText("Unassigned", { exact: true })).toBeVisible();
++  await expect(page.getByText("Bug", { exact: true })).toBeVisible();
++  await page.getByRole("link", { name: "Back to issues" }).click();
++  const row = page
++    .getByRole("row")
++    .filter({ has: page.getByRole("link", { name: title, exact: true }) });
++  await row.getByRole("button", { name: "Delete" }).click();
++  await page.getByRole("button", { name: "Cancel", exact: true }).click();
++  await expect(row).toBeVisible();
++  await row.getByRole("button", { name: "Delete" }).click();
++  await page.getByRole("button", { name: "Confirm delete" }).click();
++  await expect(
++    page.getByRole("link", { name: title, exact: true }),
++  ).toHaveCount(0);
++  await page.getByRole("link", { name: "Categories", exact: true }).click();
++  await page
++    .getByRole("row")
++    .filter({ has: page.getByRole("cell", { name: category, exact: true }) })
++    .getByRole("button", { name: "Delete" })
++    .click();
++  await page.getByRole("button", { name: "Confirm delete" }).click();
++  await expect(
++    page.getByRole("cell", { name: category, exact: true }),
++  ).toHaveCount(0);
++  expect(errors).toEqual([]);
++});
++
++test("empty filters, reset and network error feedback", async ({ page }) => {
++  await page.goto("/#/login");
++  await page.getByLabel("Email").fill("admin@example.com");
++  await page.getByLabel("Password").fill("password");
++  await page.getByRole("button", { name: /sign in|login/i }).click();
++  await page.getByRole("link", { name: "Issues", exact: true }).click();
++  await page.getByLabel("Search title").fill("no-such-issue-" + Date.now());
++  await page.getByRole("button", { name: "Apply filters" }).click();
++  await expect(
++    page.getByText("No issues match the selected filters."),
++  ).toBeVisible();
++  await page.getByRole("button", { name: "Reset filters" }).click();
++  await expect(page.getByLabel("Search title")).toHaveValue("");
++  await page.route("**/issues?*", (route) => route.abort());
++  await page.getByRole("button", { name: "Apply filters" }).click();
++  await expect(page.getByRole("alert")).toContainText(
++    "Unable to reach the API",
++  );
++});
+diff --git a/package-lock.json b/package-lock.json
+index c11a6a9..6575b85 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -28,6 +28,9 @@
+         "react-bootstrap": "^2.10.10",
+         "react-dom": "^19.2.8",
+         "react-router-dom": "^7.18.2"
++      },
++      "devDependencies": {
++        "@playwright/test": "1.64.1"
+       }
+     },
+     "node_modules/@babel/runtime": {
+@@ -811,6 +814,22 @@
+       "license": "MIT",
+       "optional": true
+     },
++    "node_modules/@playwright/test": {
++      "version": "1.64.1",
++      "resolved": "https://registry.npmjs.org/@playwright/test/-/test-1.64.1.tgz",
++      "integrity": "sha512-IaYGml/nSOiZWROfPtuIL7neuu9qDOZ3TNvNljUIrhDMxiGTgPjzj/g9p9RxpS2tSepPDRY+UwAaEeiKtUvIAg==",
++      "dev": true,
++      "license": "Apache-2.0",
++      "dependencies": {
++        "playwright": "1.64.1"
++      },
++      "bin": {
++        "playwright": "cli.js"
++      },
++      "engines": {
++        "node": ">=20"
++      }
++    },
+     "node_modules/@popperjs/core": {
+       "version": "2.11.8",
+       "resolved": "https://registry.npmjs.org/@popperjs/core/-/core-2.11.8.tgz",
+@@ -997,9 +1016,9 @@
+       }
+     },
+     "node_modules/axios": {
+-      "version": "1.19.0",
+-      "resolved": "https://registry.npmjs.org/axios/-/axios-1.19.0.tgz",
+-      "integrity": "sha512-ht/iuYZXEjFxLH/Hkezgd7m6JKlHHXEUSneaDz8uZe1Gj5QZtCnpyDsckvAiEnT89OEbCLmnte4R4sn7P0EKFw==",
++      "version": "1.20.0",
++      "resolved": "https://registry.npmjs.org/axios/-/axios-1.20.0.tgz",
++      "integrity": "sha512-r8aOh8j9cGKpgQAqpzrUHnSIc6a59Y3Xf/cv8sy1DrHCkZHzQGEuoq1tARk6qSyDdtQGSDgpb9kFlruzPvrgwg==",
+       "license": "MIT",
+       "dependencies": {
+         "follow-redirects": "^1.16.0",
+@@ -2253,6 +2272,35 @@
+         "url": "https://github.com/sponsors/jonschlinkert"
+       }
+     },
++    "node_modules/playwright": {
++      "version": "1.64.1",
++      "resolved": "https://registry.npmjs.org/playwright/-/playwright-1.64.1.tgz",
++      "integrity": "sha512-HCrVhHr5QQuwYoswEUGTb7gGp522yflbv/ST8nF4sFWGuLjQCt17Q/EubpGGSNKYn1tsTCPZxqHhHCfVURu7UA==",
++      "dev": true,
++      "license": "Apache-2.0",
++      "dependencies": {
++        "playwright-core": "1.64.1"
++      },
++      "bin": {
++        "playwright": "cli.js"
++      },
++      "engines": {
++        "node": ">=20"
++      }
++    },
++    "node_modules/playwright-core": {
++      "version": "1.64.1",
++      "resolved": "https://registry.npmjs.org/playwright-core/-/playwright-core-1.64.1.tgz",
++      "integrity": "sha512-BC4s8y6SEVA6Q1rSxZTto8hI1KUI3xXlHGZgvGqP4IqPdI/a6FX9H29IDNz7vKo9l21b6LfYosScPL6M3xxyDQ==",
++      "dev": true,
++      "license": "Apache-2.0",
++      "bin": {
++        "playwright-core": "cli.js"
++      },
++      "engines": {
++        "node": ">=20"
++      }
++    },
+     "node_modules/postcss": {
+       "version": "8.5.26",
+       "resolved": "https://registry.npmjs.org/postcss/-/postcss-8.5.26.tgz",
+@@ -2313,9 +2361,9 @@
+       }
+     },
+     "node_modules/proxy-addr": {
+-      "version": "2.0.7",
+-      "resolved": "https://registry.npmjs.org/proxy-addr/-/proxy-addr-2.0.7.tgz",
+-      "integrity": "sha512-llQsMLSUDUPT44jdrU/O37qlnifitDP+ZwrmmZcoSKyLKvtZxpyV0n2/bD/N4tBAAZ/gJEdZU7KMraoK1+XYAg==",
++      "version": "2.0.8",
++      "resolved": "https://registry.npmjs.org/proxy-addr/-/proxy-addr-2.0.8.tgz",
++      "integrity": "sha512-5nnx0yGyVUcY6t9RnWcARWtwT9F1D8O9rt08htPvnd49W1IgZtmLkhu9WfMzQj1cFxjHIO6connUNVW5k7AVyQ==",
+       "license": "MIT",
+       "dependencies": {
+         "forwarded": "0.2.0",
+@@ -2323,6 +2371,10 @@
+       },
+       "engines": {
+         "node": ">= 0.10"
++      },
++      "funding": {
++        "type": "opencollective",
++        "url": "https://opencollective.com/express"
+       }
+     },
+     "node_modules/proxy-from-env": {
+@@ -2335,9 +2387,9 @@
+       }
+     },
+     "node_modules/qs": {
+-      "version": "6.15.3",
+-      "resolved": "https://registry.npmjs.org/qs/-/qs-6.15.3.tgz",
+-      "integrity": "sha512-O9gl3zCl5h5blw1KGUzQKhA5oUXSl8rwUIM5o0S3nCXMliSvy5Dzx7/DJcI+SwgICv+IneSZwhBh1oSyEHA71A==",
++      "version": "6.16.1",
++      "resolved": "https://registry.npmjs.org/qs/-/qs-6.16.1.tgz",
++      "integrity": "sha512-5Px6J7rfHBAGUhNQ3es4YzcOdBBw0SDcVtThJml4RdnKw4tKs2epA0kPZ+K8X+WiHktT93RHVcQ/3ym5aTCgtg==",
+       "license": "BSD-3-Clause",
+       "dependencies": {
+         "es-define-property": "^1.0.1",
+@@ -3106,9 +3158,9 @@
+       }
+     },
+     "node_modules/source-map-js": {
+-      "version": "1.2.1",
+-      "resolved": "https://registry.npmjs.org/source-map-js/-/source-map-js-1.2.1.tgz",
+-      "integrity": "sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==",
++      "version": "1.2.2",
++      "resolved": "https://registry.npmjs.org/source-map-js/-/source-map-js-1.2.2.tgz",
++      "integrity": "sha512-KGj/8Y43x35aZVDtt+J4mK1hoLGHULMYfSkODJNQjNDC3oW1PqPoxMwo0pLUsWM/UEGzON/NxeHywEfNXNP3Vw==",
+       "license": "BSD-3-Clause",
+       "engines": {
+         "node": ">=0.10.0"
+diff --git a/package.json b/package.json
+index c5cc412..ae5fbc4 100644
+--- a/package.json
++++ b/package.json
+@@ -8,7 +8,8 @@
+     "start": "node build.js --watch --dev",
+     "update_version": "node scripts/update_version.js",
+     "update_packages": "npx npm-check-updates -u",
+-    "mock-server": "node mock-server.cjs"
++    "mock-server": "node mock-server.cjs",
++    "test:e2e": "playwright test"
+   },
+   "author": "",
+   "license": "ISC",
+@@ -32,5 +33,8 @@
+     "react-bootstrap": "^2.10.10",
+     "react-dom": "^19.2.8",
+     "react-router-dom": "^7.18.2"
++  },
++  "devDependencies": {
++    "@playwright/test": "1.64.1"
+   }
+ }
+diff --git a/playwright.config.js b/playwright.config.js
+new file mode 100644
+index 0000000..00d0f35
+--- /dev/null
++++ b/playwright.config.js
+@@ -0,0 +1,10 @@
++import { defineConfig } from "@playwright/test";
++export default defineConfig({
++  testDir: "./e2e",
++  workers: 1,
++  use: {
++    baseURL: process.env.E2E_BASE_URL || "http://localhost:8000",
++    trace: "retain-on-failure",
++  },
++  reporter: "list",
++});
+diff --git a/src/js/App.js b/src/js/App.js
+index 415df1a..4d7c765 100644
+--- a/src/js/App.js
++++ b/src/js/App.js
+@@ -1,3 +1,4 @@
++import {Categories, Issues, IssueForm, IssueDetails} from './tracker/Tracker';
+ import React, { useEffect, useState } from "react";
+ import Login from "./Login";
+ import { AUTH_STATE_CHANGE_EVENT, isLoggedIn } from "./services/AuthService";
+@@ -51,6 +52,11 @@ const AuthenticatedApp = () => {
+         <TopNavigation />
+         <main className="app-page-shell container-fluid px-3">
+           <Routes>
++            <Route path="/categories" element={<Categories />} />
++            <Route path="/issues" element={<Issues />} />
++            <Route path="/issues/new" element={<IssueForm />} />
++            <Route path="/issues/:id/edit" element={<IssueForm />} />
++            <Route path="/issues/:id" element={<IssueDetails />} />
+             <Route
+               path="/"
+               element={<Navigate to="/dashboard" replace />}
+diff --git a/src/js/Login.js b/src/js/Login.js
+index cb5e55e..2415163 100644
+--- a/src/js/Login.js
++++ b/src/js/Login.js
+@@ -7,7 +7,7 @@ import {
+   createSessionAndRedirect
+ } from "./services/AuthService";
+ 
+-export default Login = () => {
++const Login = () => {
+   const [email, setEmail] = useState("");
+   const [password, setPassword] = useState("");
+   const [errors, setErrors] = useState({});
+@@ -24,7 +24,7 @@ export default Login = () => {
+     }).catch((payload) => {
+       console.log("Something went wrong");
+       console.log(payload.response);
+-      setErrors(payload.response.data);
++      setErrors(payload.response?.data || {message: "Cannot reach the API"});
+       setIsLoading(false);
+     });
+   }
+@@ -38,11 +38,12 @@ export default Login = () => {
+           </h1>
+           <hr/>
+           <div className="form-group p-2">
+-            <label>
++            <label htmlFor="login-email">
+               <FontAwesomeIcon icon={faUser} className="me-2"/>
+               Email:
+             </label>
+             <input
++              id="login-email"
+               value={email}
+               disabled={isLoading}
+               className={`mt-2 ${getInputClassName(errors, 'email')}`}
+@@ -58,11 +59,12 @@ export default Login = () => {
+             {renderInputErrors(errors, 'email')}
+           </div>
+           <div className="form-group p-2">
+-            <label>
++            <label htmlFor="login-password">
+               <FontAwesomeIcon icon={faLock} className="me-2"/>
+               Password:
+             </label>
+             <input
++              id="login-password"
+               value={password}
+               disabled={isLoading}
+               className={`mt-2 ${getInputClassName(errors, 'password')}`}
+@@ -105,3 +107,5 @@ export default Login = () => {
+     </div>
+   );
+ }
++
++export default Login;
+diff --git a/src/js/Pagination.js b/src/js/Pagination.js
+index 37e1c01..e9073ec 100644
+--- a/src/js/Pagination.js
++++ b/src/js/Pagination.js
+@@ -1,7 +1,7 @@
+ import React from "react";
+ import { MAX_VISIBLE_PAGES } from "./helpers/Constants";
+ 
+-export default Pagination = ({
++const Pagination = ({
+   currentPage = 1,
+   totalPages = 1,
+   handlePrevious,
+@@ -95,3 +95,5 @@ export default Pagination = ({
+     </nav>
+   );
+ };
++
++export default Pagination;
+diff --git a/src/js/Sidebar.js b/src/js/Sidebar.js
+index d2a99ec..c097e7a 100644
+--- a/src/js/Sidebar.js
++++ b/src/js/Sidebar.js
+@@ -7,7 +7,7 @@ import { useNavigate, useLocation } from "react-router-dom";
+ import { getCurrentUser } from "./services/AuthService";
+ import { getNavigationSections } from "./navigationServices";
+ 
+-export default Sidebar = () => {
++const Sidebar = () => {
+   const [isOpen, setIsOpen] = useState(true);
+ 
+   const navigate = useNavigate();
+@@ -48,6 +48,7 @@ export default Sidebar = () => {
+                 return (
+                   <li className={location.pathname == service.path ? "active" : ""} key={service.id}>
+                     <a
++                      href={`#${service.path}`}
+                       onClick={() => {
+                         navigate(service.path);
+                       }}
+@@ -69,3 +70,5 @@ export default Sidebar = () => {
+     </div>
+   );
+ }
++
++export default Sidebar;
+diff --git a/src/js/TopNavigation.js b/src/js/TopNavigation.js
+index ea37cb5..5461bab 100644
+--- a/src/js/TopNavigation.js
++++ b/src/js/TopNavigation.js
+@@ -74,7 +74,7 @@ const matchesSearch = (service, normalizedSearch) => {
+   return searchableText.includes(normalizedSearch);
+ };
+ 
+-export default TopNavigation = () => {
++const TopNavigation = () => {
+   const [searchValue, setSearchValue] = useState("");
+   const [isSearchFocused, setIsSearchFocused] = useState(false);
+   const [pinnedServiceIds, setPinnedServiceIds] = useState(readPinnedServices);
+@@ -256,3 +256,5 @@ export default TopNavigation = () => {
+     </header>
+   );
+ }
++
++export default TopNavigation;
+diff --git a/src/js/commons/AdminContent.js b/src/js/commons/AdminContent.js
+index 79b405c..6717573 100644
+--- a/src/js/commons/AdminContent.js
++++ b/src/js/commons/AdminContent.js
+@@ -1,6 +1,6 @@
+ import React from "react";
+ 
+-export default AdminContent = ({ children, title="", headerActions=[], footer, ...props }) => {
++const AdminContent = ({ children, title="", headerActions=[], footer, ...props }) => {
+   return (
+     <React.Fragment>
+       <div className="card shadow mb-4">
+@@ -34,3 +34,5 @@ export default AdminContent = ({ children, title="", headerActions=[], footer, .
+     </React.Fragment>
+   )
+ }
++
++export default AdminContent;
+diff --git a/src/js/commons/ConfirmationModal.js b/src/js/commons/ConfirmationModal.js
+index 1d0639a..88bfb81 100644
+--- a/src/js/commons/ConfirmationModal.js
++++ b/src/js/commons/ConfirmationModal.js
+@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+ import { faCheck, faXmark } from "@fortawesome/free-solid-svg-icons";
+ import Loader from "./Loader";
+ 
+-export default ConfirmationModal = (props) => {
++const ConfirmationModal = (props) => {
+   return (
+     <Modal
+       show={props.show}
+@@ -45,3 +45,5 @@ export default ConfirmationModal = (props) => {
+     </Modal>
+   )
+ }
++
++export default ConfirmationModal;
+diff --git a/src/js/commons/Loader.js b/src/js/commons/Loader.js
+index a241996..f012803 100644
+--- a/src/js/commons/Loader.js
++++ b/src/js/commons/Loader.js
+@@ -1,9 +1,11 @@
+ import React from "react";
+ 
+-export default Loader = () => {
++const Loader = () => {
+   return (
+     <div className="loader-container d-flex align-items-center justify-content-center">
+       <div className="loader"/>
+     </div>
+   )
+ }
++
++export default Loader;
+diff --git a/src/js/navigationServices.js b/src/js/navigationServices.js
+index f41f8b7..ab46b97 100644
+--- a/src/js/navigationServices.js
++++ b/src/js/navigationServices.js
+@@ -5,6 +5,8 @@ import {
+ } from "@fortawesome/free-solid-svg-icons";
+ 
+ export const navigationServices = [
++  {id: "issues", label: "Issues", description: "Track issues", path: "/issues", icon: faDashboard, section: "main", keywords: ["issues"]},
++  {id: "categories", label: "Categories", description: "Manage categories", path: "/categories", icon: faGears, section: "main", keywords: ["categories"]},
+   {
+     id: "dashboard",
+     label: "Dashboard",
+diff --git a/src/js/services/TrackerService.js b/src/js/services/TrackerService.js
+new file mode 100644
+index 0000000..04493c0
+--- /dev/null
++++ b/src/js/services/TrackerService.js
+@@ -0,0 +1,26 @@
++import axios from "axios";
++import { buildHeaders } from "../helpers/AppHelper";
++
++export const request = async (method, path, data, params) =>
++  (
++    await axios({
++      method,
++      url: `${API_BASE_URL}${path}`,
++      data,
++      params,
++      headers: buildHeaders(),
++    })
++  ).data;
++export const allCategories = async () => {
++  const records = [];
++  let page = 1;
++  while (page) {
++    const result = await request("get", "/categories", undefined, {
++      page,
++      per_page: 100,
++    });
++    records.push(...result.records);
++    page = result.next_page;
++  }
++  return records;
++};
+diff --git a/src/js/tracker/Tracker.js b/src/js/tracker/Tracker.js
+new file mode 100644
+index 0000000..37e58b5
+--- /dev/null
++++ b/src/js/tracker/Tracker.js
+@@ -0,0 +1,555 @@
++import React, { useEffect, useState } from "react";
++import { Alert, Button, Form, Modal, Table, Spinner } from "react-bootstrap";
++import { Link, useNavigate, useParams } from "react-router-dom";
++import { request, allCategories } from "../services/TrackerService";
++import AdminContent from "../commons/AdminContent";
++
++const message = (e) => {
++  const detail = e.response?.data?.detail;
++  return Array.isArray(detail)
++    ? detail.map((x) => `${x.loc.at(-1)}: ${x.msg}`).join("; ")
++    : typeof detail === "string"
++      ? detail
++      : "Unable to reach the API. Check the server and try again.";
++};
++const statuses = ["open", "in_progress", "resolved", "closed"];
++const priorities = ["low", "medium", "high", "critical"];
++const label = (value) => value.replaceAll("_", " ");
++function Field({
++  name,
++  title,
++  value,
++  change,
++  options,
++  required = false,
++  maxLength,
++  multiline = false,
++}) {
++  return (
++    <Form.Group className="mb-3" controlId={name}>
++      <Form.Label>
++        {title}
++        {required ? " *" : ""}
++      </Form.Label>
++      {options ? (
++        <Form.Select
++          value={value ?? ""}
++          onChange={(e) => change(name, e.target.value)}
++          required={required}
++        >
++          {options.map(([v, t]) => (
++            <option key={v} value={v}>
++              {t}
++            </option>
++          ))}
++        </Form.Select>
++      ) : (
++        <Form.Control
++          as={multiline ? "textarea" : "input"}
++          value={value ?? ""}
++          maxLength={maxLength}
++          required={required}
++          onChange={(e) => change(name, e.target.value)}
++        />
++      )}
++    </Form.Group>
++  );
++}
++function Confirm({ item, cancel, remove, busy }) {
++  return (
++    <Modal show={!!item} onHide={cancel}>
++      <Modal.Header closeButton>
++        <Modal.Title>Confirm deletion</Modal.Title>
++      </Modal.Header>
++      <Modal.Body>
++        Delete {item?.title || item?.name}? This cannot be undone.
++      </Modal.Body>
++      <Modal.Footer>
++        <Button variant="secondary" onClick={cancel}>
++          Cancel
++        </Button>
++        <Button variant="danger" disabled={busy} onClick={remove}>
++          Confirm delete
++        </Button>
++      </Modal.Footer>
++    </Modal>
++  );
++}
++export function Categories() {
++  const [rows, setRows] = useState([]),
++    [form, setForm] = useState({ name: "", description: "" }),
++    [error, setError] = useState(""),
++    [loading, setLoading] = useState(true),
++    [busy, setBusy] = useState(false),
++    [item, setItem] = useState(null);
++  const load = async () => {
++    setLoading(true);
++    try {
++      setRows(await allCategories());
++    } catch (e) {
++      setError(message(e));
++    } finally {
++      setLoading(false);
++    }
++  };
++  useEffect(() => {
++    load();
++  }, []);
++  const change = (key, value) => setForm((f) => ({ ...f, [key]: value }));
++  const save = async (e) => {
++    e.preventDefault();
++    setBusy(true);
++    setError("");
++    try {
++      await request(
++        form.id ? "patch" : "post",
++        form.id ? `/categories/${form.id}` : "/categories",
++        { name: form.name, description: form.description },
++      );
++      setForm({ name: "", description: "" });
++      await load();
++    } catch (e) {
++      setError(message(e));
++    } finally {
++      setBusy(false);
++    }
++  };
++  const remove = async () => {
++    setBusy(true);
++    setError("");
++    try {
++      await request("delete", `/categories/${item.id}`);
++      setItem(null);
++      await load();
++    } catch (e) {
++      setItem(null);
++      setError(message(e));
++    } finally {
++      setBusy(false);
++    }
++  };
++  return (
++    <AdminContent title="Category management">
++      <h1>Categories</h1>
++      {error && <Alert variant="danger">{error}</Alert>}
++      <Form onSubmit={save}>
++        <Field
++          name="name"
++          title="Name"
++          value={form.name}
++          change={change}
++          required
++          maxLength={100}
++        />
++        <Field
++          name="description"
++          title="Description"
++          value={form.description}
++          change={change}
++          multiline
++          maxLength={500}
++        />
++        <Button type="submit" disabled={busy}>
++          {form.id ? "Save category" : "Create category"}
++        </Button>
++        {form.id && (
++          <Button
++            variant="secondary"
++            onClick={() => setForm({ name: "", description: "" })}
++          >
++            Cancel edit
++          </Button>
++        )}
++      </Form>
++      {loading ? (
++        <Spinner aria-label="Loading categories" />
++      ) : (
++        <Table responsive>
++          <thead>
++            <tr>
++              <th>Name</th>
++              <th>Description</th>
++              <th>Actions</th>
++            </tr>
++          </thead>
++          <tbody>
++            {rows.map((row) => (
++              <tr key={row.id}>
++                <td>{row.name}</td>
++                <td>{row.description}</td>
++                <td>
++                  <Button onClick={() => setForm(row)}>Edit</Button>{" "}
++                  <Button variant="danger" onClick={() => setItem(row)}>
++                    Delete
++                  </Button>
++                </td>
++              </tr>
++            ))}
++          </tbody>
++        </Table>
++      )}
++      {!loading && !rows.length && (
++        <p>No categories yet. Create one before adding issues.</p>
++      )}
++      <Confirm
++        item={item}
++        cancel={() => setItem(null)}
++        remove={remove}
++        busy={busy}
++      />
++    </AdminContent>
++  );
++}
++const emptyFilters = {
++  search: "",
++  status: "",
++  priority: "",
++  category_id: "",
++  assigned_user_id: "",
++};
++export function Issues() {
++  const [data, setData] = useState({ records: [] }),
++    [filters, setFilters] = useState(emptyFilters),
++    [applied, setApplied] = useState(emptyFilters),
++    [page, setPage] = useState(1),
++    [cats, setCats] = useState([]),
++    [users, setUsers] = useState([]),
++    [error, setError] = useState(""),
++    [loading, setLoading] = useState(true),
++    [item, setItem] = useState(null),
++    [busy, setBusy] = useState(false),
++    [refresh, setRefresh] = useState(0);
++  useEffect(() => {
++    Promise.all([allCategories(), request("get", "/assignees")])
++      .then(([c, u]) => {
++        setCats(c);
++        setUsers(u);
++      })
++      .catch((e) => setError(message(e)));
++  }, []);
++  useEffect(() => {
++    let active = true;
++    setLoading(true);
++    request("get", "/issues", undefined, {
++      ...Object.fromEntries(Object.entries(applied).filter(([, v]) => v)),
++      page,
++    })
++      .then((d) => {
++        if (active) setData(d);
++      })
++      .catch((e) => {
++        if (active) setError(message(e));
++      })
++      .finally(() => {
++        if (active) setLoading(false);
++      });
++    return () => {
++      active = false;
++    };
++  }, [applied, page, refresh]);
++  const change = (k, v) => setFilters((f) => ({ ...f, [k]: v }));
++  const remove = async () => {
++    setBusy(true);
++    try {
++      await request("delete", `/issues/${item.id}`);
++      setItem(null);
++      setPage(1);
++      setRefresh((x) => x + 1);
++    } catch (e) {
++      setItem(null);
++      setError(message(e));
++    } finally {
++      setBusy(false);
++    }
++  };
++  return (
++    <AdminContent title="Issue directory">
++      <h1>Issues</h1>
++      <Link className="btn btn-primary mb-3" to="/issues/new">
++        New issue
++      </Link>
++      {error && <Alert variant="danger">{error}</Alert>}
++      <Form
++        onSubmit={(e) => {
++          e.preventDefault();
++          setError("");
++          setPage(1);
++          setApplied({ ...filters });
++        }}
++      >
++        <Field
++          name="search"
++          title="Search title"
++          value={filters.search}
++          change={change}
++        />
++        <div className="row">
++          {[
++            ["status", "Status", statuses.map((v) => [v, label(v)])],
++            ["priority", "Priority", priorities.map((v) => [v, label(v)])],
++            ["category_id", "Category", cats.map((c) => [c.id, c.name])],
++            [
++              "assigned_user_id",
++              "Assignee",
++              users.map((u) => [u.id, u.full_name]),
++            ],
++          ].map(([k, t, o]) => (
++            <div className="col-md-3" key={k}>
++              <Field
++                name={k}
++                title={t}
++                value={filters[k]}
++                change={change}
++                options={[["", "All"], ...o]}
++              />
++            </div>
++          ))}
++        </div>
++        <Button type="submit">Apply filters</Button>{" "}
++        <Button
++          variant="secondary"
++          onClick={() => {
++            setFilters(emptyFilters);
++            setApplied(emptyFilters);
++            setPage(1);
++          }}
++        >
++          Reset filters
++        </Button>
++      </Form>
++      {loading ? (
++        <Spinner aria-label="Loading issues" />
++      ) : (
++        <Table responsive>
++          <thead>
++            <tr>
++              {[
++                "Title",
++                "Category",
++                "Status",
++                "Priority",
++                "Assignee",
++                "Updated",
++                "Actions",
++              ].map((h) => (
++                <th key={h}>{h}</th>
++              ))}
++            </tr>
++          </thead>
++          <tbody>
++            {data.records.map((row) => (
++              <tr key={row.id}>
++                <td>
++                  <Link to={`/issues/${row.id}`}>{row.title}</Link>
++                </td>
++                <td>{row.category.name}</td>
++                <td>{label(row.status)}</td>
++                <td>{row.priority}</td>
++                <td>{row.assigned_user?.full_name || "Unassigned"}</td>
++                <td>{new Date(row.updated_at).toLocaleString()}</td>
++                <td>
++                  <Link to={`/issues/${row.id}/edit`}>Edit</Link>{" "}
++                  <Button variant="danger" onClick={() => setItem(row)}>
++                    Delete
++                  </Button>
++                </td>
++              </tr>
++            ))}
++          </tbody>
++        </Table>
++      )}
++      {!loading && !data.records.length && (
++        <p>No issues match the selected filters.</p>
++      )}
++      <Button
++        disabled={!data.prev_page || loading}
++        onClick={() => setPage(data.prev_page)}
++      >
++        Previous
++      </Button>{" "}
++      Page {page}{" "}
++      <Button
++        disabled={!data.next_page || loading}
++        onClick={() => setPage(data.next_page)}
++      >
++        Next
++      </Button>
++      <Confirm
++        item={item}
++        cancel={() => setItem(null)}
++        remove={remove}
++        busy={busy}
++      />
++    </AdminContent>
++  );
++}
++export function IssueForm() {
++  const { id } = useParams(),
++    navigate = useNavigate();
++  const [form, setForm] = useState({
++      title: "",
++      description: "",
++      status: "open",
++      priority: "medium",
++      category_id: "",
++      assigned_user_id: "",
++    }),
++    [cats, setCats] = useState([]),
++    [users, setUsers] = useState([]),
++    [error, setError] = useState(""),
++    [ready, setReady] = useState(false),
++    [busy, setBusy] = useState(false);
++  useEffect(() => {
++    Promise.all([
++      allCategories(),
++      request("get", "/assignees"),
++      id ? request("get", `/issues/${id}`) : Promise.resolve(null),
++    ])
++      .then(([c, u, i]) => {
++        setCats(c);
++        setUsers(u);
++        if (i) setForm(i);
++        setReady(true);
++      })
++      .catch((e) => setError(message(e)));
++  }, [id]);
++  const change = (k, v) => setForm((f) => ({ ...f, [k]: v }));
++  const save = async (e) => {
++    e.preventDefault();
++    setBusy(true);
++    setError("");
++    const payload = Object.fromEntries(
++      [
++        "title",
++        "description",
++        "status",
++        "priority",
++        "category_id",
++        "assigned_user_id",
++      ].map((k) => [k, k === "assigned_user_id" ? form[k] || null : form[k]]),
++    );
++    try {
++      const result = await request(
++        id ? "patch" : "post",
++        id ? `/issues/${id}` : "/issues",
++        payload,
++      );
++      navigate(`/issues/${result.id}`);
++    } catch (e) {
++      setError(message(e));
++    } finally {
++      setBusy(false);
++    }
++  };
++  return (
++    <>
++      <h1>{id ? "Edit issue" : "New issue"}</h1>
++      {error && <Alert variant="danger">{error}</Alert>}
++      {!ready && !error && <Spinner aria-label="Loading form" />}
++      {ready && (
++        <Form onSubmit={save}>
++          <Field
++            name="title"
++            title="Title"
++            value={form.title}
++            change={change}
++            required
++            maxLength={200}
++          />
++          <Field
++            name="description"
++            title="Description"
++            value={form.description}
++            change={change}
++            multiline
++            maxLength={5000}
++          />
++          <Field
++            name="status"
++            title="Status"
++            value={form.status}
++            change={change}
++            options={statuses.map((v) => [v, label(v)])}
++            required
++          />
++          <Field
++            name="priority"
++            title="Priority"
++            value={form.priority}
++            change={change}
++            options={priorities.map((v) => [v, v])}
++            required
++          />
++          <Field
++            name="category_id"
++            title="Category"
++            value={form.category_id}
++            change={change}
++            options={[
++              ["", "Choose a category"],
++              ...cats.map((c) => [c.id, c.name]),
++            ]}
++            required
++          />
++          <Field
++            name="assigned_user_id"
++            title="Assignee"
++            value={form.assigned_user_id}
++            change={change}
++            options={[
++              ["", "Unassigned"],
++              ...users.map((u) => [u.id, u.full_name]),
++            ]}
++          />
++          {!cats.length && (
++            <Alert variant="warning">Create a category first.</Alert>
++          )}
++          <Button type="submit" disabled={busy || !cats.length}>
++            Save issue
++          </Button>{" "}
++          <Link to="/issues">Cancel</Link>
++        </Form>
++      )}
++    </>
++  );
++}
++export function IssueDetails() {
++  const { id } = useParams();
++  const [issue, setIssue] = useState(null),
++    [error, setError] = useState("");
++  useEffect(() => {
++    request("get", `/issues/${id}`)
++      .then(setIssue)
++      .catch((e) => setError(message(e)));
++  }, [id]);
++  return (
++    <>
++      {error && <Alert variant="danger">{error}</Alert>}
++      {!issue && !error && <Spinner aria-label="Loading issue" />}
++      {issue && (
++        <>
++          <h1>{issue.title}</h1>
++          <p style={{ whiteSpace: "pre-wrap" }}>{issue.description}</p>
++          <dl>
++            {[
++              ["Category", issue.category.name],
++              ["Status", label(issue.status)],
++              ["Priority", issue.priority],
++              ["Assignee", issue.assigned_user?.full_name || "Unassigned"],
++              ["Updated", new Date(issue.updated_at).toLocaleString()],
++            ].map(([k, v]) => (
++              <React.Fragment key={k}>
++                <dt>{k}</dt>
++                <dd>{v}</dd>
++              </React.Fragment>
++            ))}
++          </dl>
++          <Link className="btn btn-primary" to={`/issues/${id}/edit`}>
++            Edit issue
++          </Link>{" "}
++        </>
++      )}
++      <Link to="/issues">Back to issues</Link>
++    </>
++  );
++}

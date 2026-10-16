@@ -1,0 +1,65 @@
+# Student application repositories and local workshop work (root only).
+# Do not remove the leading slashes: instructor-reference contains the same names.
+/issuetrackerapi/
+/issuetrackerweb/
+/recovery/
+/workshop-output/
+/.workshop/
+/api-review-lab/
+
+# Runtime credentials; retain reviewed, non-secret distributed examples.
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.dist
+!/instructor-reference/issuetrackerapi/.env.test
+
+# Machine-local Claude configuration; shared .claude files belong in Git.
+.claude/settings.local.json
+CLAUDE.local.md
+
+# Python environments, caches, test output and packaging artifacts.
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.egg-info/
+
+# JavaScript dependencies and generated test reports.
+node_modules/
+coverage/
+test-results/
+playwright-report/
+blob-report/
+
+# Generated reference assets and local persistence (keep reference source/locks).
+/instructor-reference/**/.git/
+/instructor-reference/**/public/assets/
+/instructor-reference/**/public/index.html
+/instructor-reference/**/storage/
+/instructor-reference/**/storage_test/
+*.sqlite
+*.sqlite3
+*.sqlite3-*
+*.db
+*.db-*
+
+# Local logs and editor/OS artifacts.
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*~

@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+gunicorn
+SQLAlchemy
+alembic
+psycopg[binary]
+python-dotenv
+PyYAML
+PyJWT
+Werkzeug
+boto3
+python-multipart
+pytest
+factory_boy
+httpx2
