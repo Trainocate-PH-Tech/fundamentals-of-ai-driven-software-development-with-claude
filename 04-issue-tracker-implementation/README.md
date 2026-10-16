@@ -7,6 +7,8 @@ Issue Tracker. Use the [specification](../SOFTWARE_SPECIFICATIONS.md) and
 [workflow recipes](../CLAUDE_USE_CASES.md). Read each app's AGENTS.md. Student apps
 are the active workspace; consult the instructor solution only after an attempt.
 
+**Optional after the `01-data` gate:** [Subagent exercises](../SUBAGENT_EXERCISE.md) covers sequential delegation for mock-data seeding and GET /issues. Complete the remaining module gates as usual.
+
 ## Required cycle for every increment
 
 1. Invoke the planning prompt below in Plan Mode. Inspect source paths, scope and checks.

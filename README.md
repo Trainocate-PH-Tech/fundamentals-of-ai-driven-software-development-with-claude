@@ -29,6 +29,8 @@ Generated code must pass the same gates as the instructor solution.
 Use [Claude use-case recipes](CLAUDE_USE_CASES.md) to choose a workflow, provide task inputs,
 and evaluate the output.
 
+Optional: [Subagent exercises](SUBAGENT_EXERCISE.md) delegates mock-data seeding and a database-backed issue-list endpoint.
+
 Optional: [Skills fundamentals](SKILLS_FUNDAMENTALS.md) teaches skill creation, subagent attachment, and behavioral checks.
 
 Optional: [MCP fundamentals](MCP_FUNDAMENTALS.md) connects a custom subagent to a local Python MCP server with live validation.
