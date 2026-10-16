@@ -1,135 +1,72 @@
-# Module 1 — Establish a reproducible workspace
+# Module 1 — Establish a reproducible workspace manually
 
-Windows users: complete [Windows setup](../WINDOWS_SETUP.md) first. Choose either the Bash or PowerShell block for each step, not both. Run terminal commands from the course root unless stated otherwise. Inline `./workshop` commands use `py -3.14 -m tools.workshop` in PowerShell; Claude slash commands and prompts are identical.
+**Entry:** Python 3.14, Node 24, Git, Claude Code, and Bash or PowerShell 7.4+.
+**Result:** pinned application repositories, SQLite, explicit instructions and a
+verified baseline. No Docker, installer or course launcher is required.
 
-**Entry:** Bash or PowerShell 7.4+, Git, Python 3.14, Node 24 and a working Docker daemon.
-**Result:** two pinned application repos, PostgreSQL, explicit AI instructions.
-Start at the course root (the directory containing `workshop`). Install Claude using
-[terminal setup](../CLAUDE_CODE_TERMINAL.md) or [VS Code setup](../CLAUDE_CODE_VSCODE_SETUP.md).
+Install Claude using [terminal setup](../CLAUDE_CODE_TERMINAL.md) or
+[VS Code setup](../CLAUDE_CODE_VSCODE_SETUP.md). Windows participants start with
+[Windows setup](../WINDOWS_SETUP.md). The downloaded course is reference material;
+your active project root is a new sibling folder containing both application repos.
 
-## 1. Inspect and install
+## 1. Create the workspace, install, and test
 
-```bash
-pwd
-./workshop doctor
-./workshop setup
-./workshop db up
-./workshop db migrate
-./workshop install-kit
-mkdir -p workshop-output/milestones/setup workshop-output/milestones/exploration workshop-output/milestones/01-data
-```
+Follow these steps in order. Each linked section includes exact file contents,
+working directories and Bash/PowerShell alternatives. Run only your shell's block.
 
-**PowerShell 7.4+ (Windows):**
+1. Inspect the [folder diagram](../GUIDE.md#m1-folder-diagram-and-ownership).
+2. [Clone pinned templates and apply baseline source patches](../GUIDE.md#m2-clone-the-pinned-templates-explicitly) into a new destination. The patches supply compatibility fixes, not tracker features.
+3. [Write AGENTS.md, CLAUDE.md and settings](../GUIDE.md#m3-write-the-root-instructions-yourself), and copy the supplied SQLite project profile as instructed. Preserve app-local instructions.
+4. [Create SQLite storage](../GUIDE.md#m4-prepare-sqlite-storage), then [install locked dependencies and configure environments](../GUIDE.md#m5-install-dependencies-and-configure-the-applications).
+5. [Migrate, seed the existing admin and start servers](../GUIDE.md#m6-migrate-seed-the-existing-login-and-start-both-servers).
+6. [Run the isolated baseline tests/build and inspect a Git checkpoint](../GUIDE.md#m7-verify-the-baseline-directly-and-save-a-git-checkpoint). Record actual output and skips.
 
-```powershell
-Get-Location
-py -3.14 -m tools.workshop doctor
-py -3.14 -m tools.workshop setup
-py -3.14 -m tools.workshop db up
-py -3.14 -m tools.workshop db migrate
-py -3.14 -m tools.workshop install-kit
-New-Item -ItemType Directory -Force -Path 'workshop-output/milestones/setup', 'workshop-output/milestones/exploration', 'workshop-output/milestones/01-data' | Out-Null
-```
-
-Expected: Python 3.14 and Node 24, both PostgreSQL containers healthy, migration
-`0002_add_role_to_users` applied in the student baseline. Setup uses exact commits
-and lockfiles. It preserves `.env`; it does not pull latest template changes.
-Do not use `db seed` yet: the category seed is built in Module 4.
-
-The root already has course guidance in AGENTS.md. The installer **preserves** it
-and stages its generic candidate at `.workshop/proposed/AGENTS.md`. Read both and
-merge applicable shared rules; do not replace course instructions blindly. It
-installs CLAUDE.md, which imports root AGENTS.md and workflow/project.md. Restart
-Claude after installing project skills/agents.
-
-```bash
-cat CLAUDE.md
-cat workflow/project.md
-git -C issuetrackerapi status --short
-git -C issuetrackerweb status --short
-./workshop test
-./workshop build
-```
-
-**PowerShell 7.4+ (Windows):**
-
-```powershell
-Get-Content CLAUDE.md
-Get-Content workflow/project.md
-git -C issuetrackerapi status --short
-git -C issuetrackerweb status --short
-py -3.14 -m tools.workshop test
-py -3.14 -m tools.workshop build
-```
-
-Expected: baseline tests/build pass. The changes already visible in Git are the
-workshop's documented compatibility fixes, not student feature work. Review them,
-then create a baseline commit separately in each repository. If Git identity is
-missing, configure your own name/email before committing.
-
-```bash
-git -C issuetrackerapi add .
-git -C issuetrackerapi commit -m "Establish tested workshop baseline"
-git -C issuetrackerweb add .
-git -C issuetrackerweb commit -m "Establish tested workshop baseline"
-claude
-```
-
-**PowerShell 7.4+ (Windows):**
-
-```powershell
-git -C issuetrackerapi add .
-git -C issuetrackerapi commit -m "Establish tested workshop baseline"
-git -C issuetrackerweb add .
-git -C issuetrackerweb commit -m "Establish tested workshop baseline"
-claude
-```
+Expected: migration `0002_add_role_to_users`, existing users/authentication, and
+passing baseline checks. Category/Issue are not implemented. The development file
+is `issuetrackerapi/storage/development.sqlite3`; tests use `issuetrackerapi/test.sqlite3`.
+Only the existing admin seed is available now. Add the tracker seed in Module 4.
 
 ## 2. Validate instructions, not just file existence
 
-Follow [project structure](01_PROJECT_STRUCTURE.md), then
-[modify and test Claude context](01_CLAUDE_SETUP.md). Inside Claude, use `/memory`
-to inspect loaded files and `/agents` to confirm `workshop-reviewer` is available.
+Read [project structure](01_PROJECT_STRUCTURE.md) and
+[modify/test Claude context](01_CLAUDE_SETUP.md). Start `claude` from the active root.
+Use `/memory` and inspect the actual file reads to verify loading.
 
-**Claude prompt — guided:**
-
-```text
-Read CLAUDE.md, AGENTS.md, workflow/project.md, and SOFTWARE_SPECIFICATIONS.md.
-Analyze the workspace without editing application source or reading .env files.
-Identify which instructions were imported, each app's purpose, where User lives,
-and which database is safe for tests. Cite paths for every architectural claim.
-Save the analysis to workshop-output/milestones/setup/map.md. Flag unknowns, don't guess.
-```
-
-**Independent exercise:** add a rule to root AGENTS.md requiring a migration review
-before changing relationships. Add a Claude-specific instruction to CLAUDE.md to
-return a short evidence table. Restart Claude and ask it to plan a category foreign
-key change without implementing it. Check the actual answer mentions the migration
-review and evidence table; file existence alone is not proof. Record misses and revise.
-
-## 3. First supervised subagent
-
-A subagent is a separate context with a bounded role. It does not automatically
-know your conversation. Our reviewer has Read/Glob/Grep tools and cannot execute
-commands or edit files. Give it explicit inputs:
+**Guided prompt inside Claude:**
 
 ```text
-Use workshop-reviewer to inspect workshop-output/milestones/setup/map.md against
-workflow/project.md and the two application repositories. Ask it to identify
-unsupported claims, with paths. Do not implement fixes. Save its returned report
-to workshop-output/milestones/setup/review.md in the main session.
+Read CLAUDE.md, AGENTS.md, workflow/project.md, SOFTWARE_SPECIFICATIONS.md and both
+application AGENTS.md files. Analyze this workspace without editing app source or
+reading environment files. Identify the loaded instructions, app responsibilities,
+User model/type, API/web ports and the exact SQLite test file. Cite paths. Save the
+analysis to workshop-output/milestones/setup/map.md. Mark unknowns explicitly.
 ```
 
-Observe the named task in Claude's UI; expand it for tool activity. Check its report
-exists and contains evidence. A confident summary is not proof of completion.
-**Independent:** deliberately put an incorrect API port in a copy of the map and
-ask the reviewer to find it. Correct the map, not the real configuration.
+**Independent:** add a shared rule requiring migration review before relationship
+changes and a Claude instruction requiring a short evidence table. Restart and ask
+for a category foreign-key plan without implementation. Verify the response follows
+both rules; record misses and revise rather than assuming a file was loaded.
 
-**Exit gate:** tests/build pass; root context imports are visible; map and reviewer
-report agree on app paths, ports and test DB. If Docker is unavailable, fix the
-daemon before continuing. If a port is occupied, stop the conflicting course
-workspace with `./workshop db stop`; do not delete Docker volumes.
+## 3. Create and supervise a reviewer
 
+Follow [manual subagent creation](../GUIDE.md#m8-create-and-invoke-subagents-yourself)
+to create architecture-reviewer and acceptance-reviewer. Restart Claude, inspect
+`/agents` or the installed client's help, then explicitly delegate:
+
+```text
+Use acceptance-reviewer to inspect workshop-output/milestones/setup/map.md against
+workflow/project.md and both app instructions/source paths. Return unsupported
+claims with file evidence; no edits or commands. Main session: save the returned
+report to workshop-output/milestones/setup/review.md and check each finding.
+```
+
+Expand the named delegation row and inspect actual tools, inputs and output.
+Missing task activity means delegation was not demonstrated. **Independent:** put
+a wrong API port in a copy of the map and ask the reviewer to detect it; repair the
+map, not the real application configuration.
+
+**Exit gate:** baseline tests/build pass, context imports are observed, reviewer
+activity is real, and the map names correct app paths, ports and SQLite test target.
+Stop servers with Ctrl+C when needed; there is no database service to stop.
 Next: [Module 2](../02-application-fundamentals/README.md).
-
-Apply this workflow in the [diagnostic lab](DIAGNOSTIC_LAB.md).
+Apply the workflow in the [diagnostic lab](DIAGNOSTIC_LAB.md).

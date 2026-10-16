@@ -1,4 +1,4 @@
-"""Copy missing kit files; stage conflicts for explicit human merging."""
+"""Maintenance-only template copier; teaching material uses manual file creation."""
 from pathlib import Path
 import shutil
 import sys

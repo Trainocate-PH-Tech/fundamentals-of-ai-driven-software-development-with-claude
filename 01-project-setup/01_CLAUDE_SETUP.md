@@ -12,12 +12,12 @@ clears assigned_user_id. Include regression evidence for both cases.
 Add this **Claude-specific** instruction to CLAUDE.md:
 
 ```markdown
-For an assignment change, use workshop-reviewer after implementation. Give it the
+For an assignment change, use acceptance-reviewer after implementation. Give it the
 accepted plan, relevant source paths and test evidence. The main session saves the
 report and resolves findings; the reviewer must not edit or run commands.
 ```
 
-Restart `claude` from the course root. Inspect `/memory` and `/agents`, then paste:
+Restart `claude` from the active project root. Inspect `/memory` and `/agents`, then paste:
 
 ```text
 Read the root and app instruction files. Plan assigning an issue to an existing

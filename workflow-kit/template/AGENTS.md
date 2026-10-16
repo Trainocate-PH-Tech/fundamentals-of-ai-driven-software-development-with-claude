@@ -6,7 +6,7 @@ Make a bounded plan, implement one slice, test, inspect the diff, then hand off.
 Preserve existing authentication and user records. Never put credentials in
 prompts, tracked files, logs, or browser code. Use environment configuration.
 Do not perform destructive database operations against development data.
-Tests use only the dedicated test database through the documented runner.
+Tests use only the dedicated test database with direct pytest commands and the documented isolated environment.
 Instructions guide behavior; permissions, database constraints, and tests enforce it.
 Report changed paths, actual commands and exit codes, evidence, and untested claims.
 Do not claim an application is complete based on an agent's summary alone.
@@ -29,3 +29,10 @@ PowerShell equivalents on Windows; do not paste Bash heredocs, export statements
 or Unix venv paths into PowerShell. Select the active workspace explicitly and
 record the OS/shell with verification evidence. Never reuse .venv or node_modules
 between Windows and WSL. See the project profile for launcher commands.
+
+## Direct development workflow
+
+Use ordinary Claude requests and direct project commands from workflow/project.md.
+Do not require a course launcher, installation helper or orchestration skill.
+Use separate SQLite development and test files, preserving foreign-key enforcement.
+Reviewers inspect evidence; the main session or human runs checks and owns changes.

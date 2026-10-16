@@ -1,5 +1,5 @@
 ---
-name: workspace-scout
+name: architecture-reviewer
 description: Trace existing application behavior without editing.
 tools: Read, Glob, Grep
 ---

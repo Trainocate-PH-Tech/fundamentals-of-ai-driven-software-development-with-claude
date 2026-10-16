@@ -1,9 +1,9 @@
 # Project structure and instruction ownership
 
-Run commands at the course root. Module 1's `./workshop setup` generates:
+Follow Module 1's direct clone/file-creation steps. Open the new active project root:
 
 ```text
-course-root/
+issue-tracker-manual/
 ├── issuetrackerapi/       # independent Git repo: FastAPI, models, migrations, specs
 ├── issuetrackerweb/       # independent Git repo: React, services, routes, build
 ├── AGENTS.md             # shared engineering and course contract
@@ -11,7 +11,7 @@ course-root/
 ├── workflow/project.md   # project-specific paths, commands and contract
 ├── .claude/              # skills, scoped rules, reviewer definitions
 ├── workshop-output/      # ignored maps, plans, reports and handoffs
-└── instructor-reference/ # completed solution; never your working app
+└── SOFTWARE_SPECIFICATIONS.md # copied behavior contract
 ```
 
 AGENTS.md is a convention used by several coding agents; support and inheritance
@@ -37,14 +37,16 @@ Add this shared rule to root AGENTS.md:
 
 ```markdown
 Before a schema change, identify the migration, rollback implications, existing
-User data impact, and a test of referential integrity. Use the workshop runner for
-tests. Never run destructive fixtures against development or production databases.
+User data impact, and a test of referential integrity. Run pytest directly from
+the API directory with APP_ENV=test and DATABASE_URL=sqlite:///test.sqlite3. Never run destructive fixtures against development or production databases.
 ```
 
 Ask Claude to propose running tests against the development database. It should
-reject that approach and select `./workshop test`. This tests instruction adherence;
-it is not a security boundary. Inspect `spec/conftest.py`: PostgreSQL fixtures also
-reject database names without `_test`. The runner selects a separate test server.
+reject that approach and select the isolated SQLite test environment. This checks
+instruction adherence, not a security boundary. Inspect spec/conftest.py and
+spec/system/test_test_environment.py: fixtures drop tables and the SQLite assertion
+expects test.sqlite3. A mistaken URL can be destructive before an assertion runs;
+explicitly inspect the chosen command/environment before authorizing it.
 Database constraints enforce relationships even if an agent omits validation.
 
 Best practices: keep rules short and observable, define safe alternatives, test
@@ -54,10 +56,10 @@ Never test a dangerous command on real data merely to see whether Claude refuses
 
 ## Exercise: inspect permissions independently
 
-The kit supplies `.claude/settings.json` with scoped Read/Edit deny rules for
-`.env` and `.env.local`. If an existing settings file conflicts, the installer
-stages a candidate instead: merge the `permissions.deny` entries deliberately
-without replacing other settings. Restart Claude and inspect `/permissions`.
+Create .claude/settings.json using the guide's manual file contents. If settings
+already exist, merge the Read/Edit/Write deny entries yourself without replacing
+other permissions. Restart Claude and inspect /permissions. Do not treat tool
+permissions as an OS sandbox or authorize shell commands that expose secrets.
 
 Use a dummy file with no secret to test the rule:
 

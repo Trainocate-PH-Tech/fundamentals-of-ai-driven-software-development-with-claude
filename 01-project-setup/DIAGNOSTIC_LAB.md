@@ -8,24 +8,26 @@ minimal repair → regression. Evidence belongs to milestone `setup-diagnosis`.
 
 A learner reports `FileNotFoundError: alembic` after running a migration directly
 from an unactivated shell. This is a supplied scenario, not a claim about the
-current runner. Do not break your installation to reproduce it.
+current installation. Do not break your installation to reproduce it.
 
 **Inside Claude:**
 
 ```text
-Read tools/workshop.py and the backend CLI without editing. Given the supplied
-missing-alembic error, compare wrong interpreter/PATH with a missing dependency.
-Name a non-mutating check that distinguishes them. Explain how ./workshop db migrate
-selects its environment. Do not reinstall packages or read .env. Save a diagnosis
-under workshop-output/milestones/setup-diagnosis/.
+Inspect the backend requirements, CLI and recorded interpreter path without
+editing. Given the missing-alembic error, compare wrong interpreter/PATH with a
+missing dependency. Propose a read-only check that distinguishes them. Explain how
+invoking the venv Python with -m alembic chooses its installed package. Do not
+reinstall packages or read .env. Save diagnosis under milestone setup-diagnosis.
 ```
 
 ## Expected evidence and verification
 
-Expected: distinguish environment selection from dependency installation and cite
-the runner's virtual-environment PATH. The main session can run `./workshop doctor`
-and inspect installed tools without mutating application source. Only rerun an
-actual migration after confirming its workspace and intended data target.
+From issuetrackerapi, use `.venv/bin/python -m pip show alembic` and
+`.venv/bin/python -m alembic --version`. PowerShell uses
+`& ./.venv/Scripts/python.exe -m pip show alembic` and
+`& ./.venv/Scripts/python.exe -m alembic --version`.
+The version check must use the same interpreter intended for migration. Confirm
+the API working directory and development SQLite target before running migration.
 
 Save inputs, observed facts, unsupported hypotheses, command/exit-code evidence
 and remaining gaps under `workshop-output/milestones/setup-diagnosis/`. Read-only agents

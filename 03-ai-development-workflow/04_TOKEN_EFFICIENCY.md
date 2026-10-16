@@ -55,7 +55,7 @@ that dependency. Do not force an answer from insufficient input.
 
 ## 3. Search first; keep full evidence outside the conversation
 
-From Bash at the course root, after student setup:
+From Bash at the active project root, after student setup:
 
 ```bash
 rg -n 'exclude_unset|assigned_user_id' issuetrackerapi/app/controllers issuetrackerapi/app/schemas
@@ -141,7 +141,7 @@ investigation with a concise result over duplicate whole-repository reviews.
 These tradeoffs and model selection are covered in [cost guidance](https://code.claude.com/docs/en/costs).
 
 ```text
-Use workshop-investigator for one question: can omitted PATCH fields reach the
+Use bug-investigator for one question: can omitted PATCH fields reach the
 update operation as null? Supply the assignment failure log and relevant schema,
 handler and operation paths. Ask for at most five findings, each with a path and
 evidence, and one proposed check. No edits, commands or further delegation.

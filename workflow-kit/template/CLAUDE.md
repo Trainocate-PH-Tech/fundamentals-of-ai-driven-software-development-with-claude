@@ -11,5 +11,6 @@ the conversation: supply the task, paths, plan, and acceptance criteria explicit
 Use the active workspace and milestone from the task/profile. Keep observed baseline
 facts separate from target requirements. Preserve milestone-specific artifacts;
 do not use a generic current.md as the sole source of progress. For implementation,
-require the explicitly accepted plan and use the bounded workshop-implement procedure.
+require the explicitly accepted plan, use direct Python/npm/Git commands, and
+record actual verification evidence. Do not invoke course orchestration tools.
 For a trivial, clearly scoped edit, a direct edit plus focused check is sufficient.

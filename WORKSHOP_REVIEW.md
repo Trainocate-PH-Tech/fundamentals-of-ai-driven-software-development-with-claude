@@ -1,5 +1,9 @@
 # Workshop review and revisions
 
+Current teaching default: ordinary Claude requests, direct development commands,
+and SQLite. Earlier entries below describe historical revisions and may mention
+retired orchestration tools. See the latest manual-workflow entry for current evidence.
+
 The original material had useful concepts and examples, but several overlapping
 lesson paths. Students had to infer working directories, package scripts and API
 contracts. Some prompts described features without runnable verification. The
@@ -41,3 +45,19 @@ recovery and evidence capture. `WINDOWS_SETUP.md` distinguishes native Windows f
 WSL2 and includes a full rehearsal checklist. Windows CI covers tooling/install/build
 and shell syntax; Docker Desktop and full native browser acceptance require the
 separate rehearsal. See `VALIDATION.md` for actual results and remaining limits.
+
+## Manual-workflow revision
+
+Removed workshop-specific orchestration from active teaching prompts and command
+examples. Students now create instructions/reviewers themselves and use ordinary
+Claude requests plus direct Python, npm, Git and Playwright commands. SQLite is the
+shared specification/profile default; modules and Windows/reference/recovery guides
+no longer send learners through the historical PostgreSQL launcher.
+
+Optional skill/plugin lessons teach student-authored procedures, not prerequisites
+for completing the application. Retired orchestration skills are archived outside
+Claude discovery. The existing launcher/installer are maintenance-only. Documentation
+checks now scan active instructions/templates and reject retired invocations while
+preserving historical validation records. CI uses direct SQLite commands on Linux
+and Windows; its remote execution and live Claude exercises remain distinct gates.
+See the latest VALIDATION.md entry for actual tests and remaining limitations.

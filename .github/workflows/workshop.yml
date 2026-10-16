@@ -1,50 +1,27 @@
-name: Workshop reference
+name: Direct SQLite reference
 on: [push, pull_request, workflow_dispatch]
 jobs:
-  reference:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.14'
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-      - name: Install and start PostgreSQL
-        run: |
-          ./workshop --reference setup
-          ./workshop --reference db up
-          ./workshop --reference db migrate
-          ./workshop --reference db seed
-      - name: Verify backend, build, and tooling
-        run: |
-          ./workshop --reference test
-          ./workshop --reference build
-          python3 -m unittest discover -s tools/tests
-          python3 tools/check_docs.py
-          python3 05-testing-debugging-and-demo/examples/hooks/test_check_python_syntax.py
-      - name: Browser acceptance
-        run: |
-          cd instructor-reference/issuetrackerweb
-          npx playwright install --with-deps chromium
-          cd ../..
-          ./workshop --reference start api > /tmp/api.log 2>&1 &
-          ./workshop --reference start web > /tmp/web.log 2>&1 &
-          python3 tools/wait_servers.py http://localhost:3001/docs http://localhost:8001
-          ./workshop --reference e2e
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: browser-failure
-          path: instructor-reference/issuetrackerweb/test-results
-  windows-tooling:
-    runs-on: windows-2025
-    timeout-minutes: 20
+  sqlite-reference:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
     defaults:
       run:
         shell: pwsh
+    env:
+      APP_ENV: development
+      DATABASE_URL: sqlite:///storage/development.sqlite3
+      API_BASE_URL: http://localhost:3001
+      API_VERSION: v1
+      WEB_PORT: '8001'
+      TOKEN_BEARER: ISSUE_TRACKER_TOKEN
+      CURRENT_USER: ISSUE_TRACKER_USER
+      E2E_API_URL: http://localhost:3001
+      E2E_BASE_URL: http://localhost:8001
+      SECRET_KEY: local-ci-only-not-a-production-secret
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -53,25 +30,107 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Install reference without Docker
+      - name: Install Python and Node locks directly
         run: |
           $ErrorActionPreference = 'Stop'
           $PSNativeCommandUseErrorActionPreference = $true
-          python -m tools.workshop --reference setup
-          python -m tools.workshop --reference setup
-      - name: Verify native tooling, process behavior, hooks and build
+          Push-Location instructor-reference/issuetrackerapi
+          try {
+              python -m venv .venv
+              $relativePython = if ($IsWindows) { '.venv/Scripts/python.exe' } else { '.venv/bin/python' }
+              $apiPython = (Resolve-Path $relativePython).Path
+              "API_PYTHON=$apiPython" >> $env:GITHUB_ENV
+              & $apiPython -m pip install -r requirements.lock.txt
+              New-Item -ItemType Directory -Force storage | Out-Null
+          } finally { Pop-Location }
+          Push-Location instructor-reference/issuetrackerweb
+          try {
+              if ($IsWindows) { npm.cmd ci } else { npm ci }
+          } finally { Pop-Location }
+      - name: Migrate and seed SQLite
+        working-directory: instructor-reference/issuetrackerapi
         run: |
           $ErrorActionPreference = 'Stop'
           $PSNativeCommandUseErrorActionPreference = $true
+          & $env:API_PYTHON -m alembic upgrade head
+          & $env:API_PYTHON -m app.cli system:seed
+          & $env:API_PYTHON -m app.seed_tracker
+          & $env:API_PYTHON -m app.seed_tracker
+      - name: Run backend tests against separate SQLite file
+        working-directory: instructor-reference/issuetrackerapi
+        env:
+          APP_ENV: test
+          DATABASE_URL: sqlite:///test.sqlite3
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          & $env:API_PYTHON -m pytest spec
+      - name: Build frontend and install Chromium
+        working-directory: instructor-reference/issuetrackerweb
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          if ($IsWindows) {
+              npm.cmd run build
+              npx.cmd playwright install chromium
+          } else {
+              npm run build
+              npx playwright install --with-deps chromium
+          }
+      - name: Run real browser acceptance against SQLite
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          $logs = (New-Item -ItemType Directory -Force 'workshop-output/ci').FullName
+          $api = $null
+          $web = $null
+          try {
+              $api = Start-Process -FilePath $env:API_PYTHON -ArgumentList '-m','uvicorn','app:create_app','--factory','--host','127.0.0.1','--port','3001' -WorkingDirectory 'instructor-reference/issuetrackerapi' -PassThru -RedirectStandardOutput "$logs/api.log" -RedirectStandardError "$logs/api-error.log"
+              $web = Start-Process -FilePath (Get-Command node).Source -ArgumentList 'build.js','--watch','--dev' -WorkingDirectory 'instructor-reference/issuetrackerweb' -PassThru -RedirectStandardOutput "$logs/web.log" -RedirectStandardError "$logs/web-error.log"
+              foreach ($url in @('http://localhost:3001/docs','http://localhost:8001')) {
+                  $ready = $false
+                  for ($attempt = 0; $attempt -lt 60; $attempt++) {
+                      try {
+                          $response = Invoke-WebRequest -Uri $url -TimeoutSec 2
+                          if ($response.StatusCode -eq 200) { $ready = $true; break }
+                      } catch { Start-Sleep -Seconds 1 }
+                  }
+                  if (-not $ready) { throw "Server not ready: $url" }
+              }
+              Push-Location instructor-reference/issuetrackerweb
+              try {
+                  if ($IsWindows) { npm.cmd run test:e2e } else { npm run test:e2e }
+              } finally { Pop-Location }
+          } finally {
+              foreach ($process in @($api,$web)) {
+                  if ($null -ne $process -and -not $process.HasExited) {
+                      if ($IsWindows) {
+                          $PSNativeCommandUseErrorActionPreference = $false
+                          taskkill.exe /PID $process.Id /T /F
+                      } else {
+                          Stop-Process -Id $process.Id -ErrorAction SilentlyContinue
+                      }
+                  }
+              }
+          }
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: sqlite-failure-${{ matrix.os }}
+          path: |
+            workshop-output/ci/
+            instructor-reference/issuetrackerweb/test-results/
+  maintenance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Check teaching material and retained maintenance code
+        run: |
           python -m unittest discover -s tools/tests
           python tools/check_docs.py --require-shells
           python 05-testing-debugging-and-demo/examples/hooks/test_check_python_syntax.py
-          & ./instructor-reference/issuetrackerapi/.venv/Scripts/python.exe -m pytest instructor-reference/issuetrackerapi/spec/system/test_cli_process.py --confcutdir=instructor-reference/issuetrackerapi/spec/system -q
-          python -m tools.workshop --reference build
           python -m tools.verify_checkpoints
-      - name: Preserve failure evidence
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-failure
-          path: instructor-reference/issuetrackerapi/.pytest_cache

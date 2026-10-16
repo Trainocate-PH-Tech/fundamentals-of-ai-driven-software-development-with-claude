@@ -1,5 +1,5 @@
 ---
-name: workshop-investigator
+name: bug-investigator
 description: Investigate one bounded bug hypothesis without edits or command execution.
 tools: Read, Glob, Grep
 ---

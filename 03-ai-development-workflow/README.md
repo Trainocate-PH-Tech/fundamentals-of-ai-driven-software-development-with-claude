@@ -1,22 +1,22 @@
 # Module 3 — Plan, create skills, and supervise reviewers
 
-Windows users: complete [Windows setup](../WINDOWS_SETUP.md) first. Choose either the Bash or PowerShell block for each step, not both. Run terminal commands from the course root unless stated otherwise. Inline `./workshop` commands use `py -3.14 -m tools.workshop` in PowerShell; Claude slash commands and prompts are identical.
+Windows users: follow [Windows setup](../WINDOWS_SETUP.md). Run commands from the active project root unless stated otherwise; choose Bash or PowerShell, not both. Prompts go inside Claude.
 
 **Entry:** verified application map. **Result:** an accepted implementation plan
 and a reusable workflow students can transfer to other projects.
 
 ## 1. Plan a bounded change
 
-Start `claude` from the course root. Use `/plan` if available in `/help`, or cycle
+Start `claude` from the active project root. Use `/plan` if available in `/help`, or cycle
 permission modes with Shift+Tab to Plan Mode. Planning cannot silently become
 implementation. Paste inside Claude:
 
 ```text
-/workshop-plan 01-data Add Category and Issue models, migrations and idempotent category seed only. Reuse User; preserve existing data. Use SOFTWARE_SPECIFICATIONS.md and workshop-output/milestones/exploration/map.md. Identify files, constraints and tests. No endpoints or frontend yet.
+Plan milestone 01-data using SQLite and direct commands. Add Category and Issue models, migrations and idempotent category seed only. Reuse User; preserve existing data. Use SOFTWARE_SPECIFICATIONS.md and workshop-output/milestones/exploration/map.md. Identify files, constraints and tests. No endpoints or frontend yet.
 ```
 
-The skill loads its SKILL.md when invoked, substitutes the arguments and asks
-Claude to inspect the project. It is not a deterministic executable or a test.
+This is an ordinary request to the main Claude session, with no custom skill
+dependency. Claude inspects the source and proposes a bounded plan.
 In Plan Mode it returns the plan in the conversation; after accepting and leaving
 Plan Mode, ask the main session to save it to `workshop-output/milestones/01-data/plan.md`.
 Read every step before implementation. A plan must name validation commands and
@@ -26,7 +26,7 @@ expected behavior, not merely say “test it.”
 
 A skill is a folder containing SKILL.md with a name, a description explaining
 when it applies, and the reusable procedure. Supporting scripts live beside it.
-Create this from your selected terminal at the course root:
+Create this from your selected terminal at the active project root:
 
 ```bash
 mkdir -p .claude/skills/review-contract
@@ -75,19 +75,18 @@ Use generic instructions and a project profile so the procedure transfers.
 
 ## 3. Subagent delegation with explicit inputs
 
-The kit now installs distinct roles: workspace-scout for tracing, workshop-investigator
-for a bounded hypothesis, backend-reviewer for integrity/auth, ui-reviewer for UI
-integration, and workshop-reviewer for general acceptance. See the
-[use-case recipes](../CLAUDE_USE_CASES.md) for inputs, outputs and monitoring.
-Read-only roles return reports; the main session saves files and runs checks.
-
-
-The installed `.claude/agents/workshop-reviewer.md` provides a name, role, tools
-and output contract. `tools: Read, Glob, Grep` deliberately excludes editing and
-shell execution. A reviewer helps find gaps; it cannot run your tests.
+Module 1 creates architecture-reviewer and acceptance-reviewer by writing their
+files under .claude/agents. Additional role definitions are provided in
+[the manual instruction examples](../workflow-kit/README.md). For the optional
+backend-reviewer, ui-reviewer or bug-investigator exercises, open the matching file
+under the course's workflow-kit/template/.claude/agents and copy its reviewed
+contents into the same relative path in your active project. No installer runs.
+Restart Claude before invoking a newly created role. The definitions restrict tools
+to Read, Glob and Grep: reviewers return reports; the main session runs commands
+and saves evidence. Give every agent explicit plan/spec/source paths.
 
 ```text
-Use workshop-reviewer to review workshop-output/milestones/01-data/plan.md against
+Use acceptance-reviewer to review workshop-output/milestones/01-data/plan.md against
 SOFTWARE_SPECIFICATIONS.md and workshop-output/milestones/exploration/map.md. Give it the
 backend path issuetrackerapi and the constraint that existing User data must survive.
 Ask for verdict, severity, source paths and missing tests. Do not implement.
@@ -108,7 +107,7 @@ implementation with one owner. Two reviewers may inspect separate backend and
 frontend scopes; do not have multiple writers change the same files. Worktrees
 provide isolation for separate writing tasks but do not isolate shared databases.
 
-**Independent:** inspect the installed reviewer definition from Bash:
+**Independent:** create ui-reviewer from the referenced example if absent, then inspect its definition from Bash:
 
 ```bash
 cat .claude/agents/ui-reviewer.md
@@ -147,8 +146,8 @@ write a concise handoff and evaluate whether a subagent adds useful independent
 work. Preserve acceptance criteria and required tests. Record measurements rather
 than claiming savings from shorter answers alone.
 
-**Exit gate:** accepted plan, reviewer report, a custom skill tested before/after,
-and a usable handoff. Next: [Module 4](../04-issue-tracker-implementation/README.md).
+**Exit gate:** accepted plan, reviewer report and usable handoff. For the optional
+skill lesson, also test the custom skill before/after implementation. Next: [Module 4](../04-issue-tracker-implementation/README.md).
 
 Source references (checked 2026-10-15): [skills](https://code.claude.com/docs/en/skills),
 [subagents](https://code.claude.com/docs/en/sub-agents),

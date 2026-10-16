@@ -5,7 +5,7 @@
 This repository teaches AI-assisted full-stack development with Claude through an Issue Tracker capstone. Keep material accessible to new developers in a completion-first, multi-session workshop. Advance by verified exit gates.
 
 - `01-project-setup/`: tools, template setup, and connectivity.
-- `02-application-fundamentals/`: request flow, APIs, databases, and Docker.
+- `02-application-fundamentals/`: request flow, APIs, SQLite, and data integrity.
 - `03-ai-development-workflow/`: exploration, planning, instructions, and reusable skills.
 - `04-issue-tracker-implementation/`: database, backend, and frontend feature work.
 - `05-testing-debugging-and-demo/`: verification, debugging, and demonstration.
@@ -55,3 +55,14 @@ PowerShell equivalents on Windows; do not paste Bash heredocs, export statements
 or Unix venv paths into PowerShell. Select the active workspace explicitly and
 record the OS/shell with verification evidence. Never reuse .venv or node_modules
 between Windows and WSL. See the project profile for launcher commands.
+
+## Manual teaching workflow
+
+SQLite is the teaching database. Use direct Python/Alembic/pytest and npm/Playwright
+commands with explicit working directories and shell syntax. Do not direct students
+or Claude to course launchers, installation helpers or retired orchestration skills.
+Use ordinary requests; optional skills are created by students in feature lessons.
+Development is sqlite:///storage/development.sqlite3; tests are sqlite:///test.sqlite3
+from the API directory. Preserve test isolation and foreign-key enforcement.
+The active student workspace is normally a sibling of the course clone; identify it
+explicitly. Historical tooling remains maintenance code, not a teaching dependency.

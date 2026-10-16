@@ -12,14 +12,28 @@ Read [check_python_syntax.py](examples/hooks/check_python_syntax.py), [settings.
 
 From the workshop root, run:
 
+Before running the hook commands, open a fresh terminal at the **downloaded course
+root** and select the active workspace. These paths follow M2's default sibling
+layout; substitute your actual active directory if you chose another name.
+
 ```bash
-python3 05-testing-debugging-and-demo/examples/hooks/test_check_python_syntax.py
+course_source=$(pwd)
+cd ../issue-tracker-manual
+```
+
+```powershell
+$course_source = (Get-Location).Path
+Set-Location ../issue-tracker-manual
+```
+
+```bash
+python3 "$course_source/05-testing-debugging-and-demo/examples/hooks/test_check_python_syntax.py"
 ```
 
 **PowerShell 7.4+ (Windows):**
 
 ```powershell
-py -3.14 05-testing-debugging-and-demo/examples/hooks/test_check_python_syntax.py
+py -3.14 "$course_source/05-testing-debugging-and-demo/examples/hooks/test_check_python_syntax.py"
 ```
 
 On native Windows, use the installed `python` executable instead of `python3` if appropriate. The script uses only the standard library. Fixtures are created in a temporary directory and cleaned up. Verify the tests actually ran; record a skipped symlink case as skipped.
@@ -30,14 +44,14 @@ On native Windows, use the installed `python` executable instead of `python3` if
 
    ```bash
    mkdir -p .claude/hooks
-   cp -n 05-testing-debugging-and-demo/examples/hooks/check_python_syntax.py .claude/hooks/check_python_syntax.py
+   cp -n "$course_source/05-testing-debugging-and-demo/examples/hooks/check_python_syntax.py" .claude/hooks/check_python_syntax.py
    ```
 
 **PowerShell 7.4+ (Windows):**
 
 ```powershell
 New-Item -ItemType Directory -Force -Path '.claude/hooks' | Out-Null
-if (-not (Test-Path .claude/hooks/check_python_syntax.py)) { Copy-Item 05-testing-debugging-and-demo/examples/hooks/check_python_syntax.py .claude/hooks/check_python_syntax.py }
+if (-not (Test-Path .claude/hooks/check_python_syntax.py)) { Copy-Item "$course_source/05-testing-debugging-and-demo/examples/hooks/check_python_syntax.py" .claude/hooks/check_python_syntax.py }
    
 ```
 2. Open root `.claude/settings.local.json`, creating it if absent. Merge the fragment's `PostToolUse` entry into existing hooks; preserve all other events and permissions. Do not copy the example tests into active hook configuration.

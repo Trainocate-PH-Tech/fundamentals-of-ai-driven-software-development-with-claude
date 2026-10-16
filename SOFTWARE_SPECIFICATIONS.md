@@ -2,7 +2,7 @@
 
 # Issue Tracker System — Software Specifications
 
-**Version:** 1.0  
+**Version:** 1.1  
 **Purpose:** Completion-first capstone application for *Fundamentals of AI-Driven Software Development with Claude*  
 **Implementation status:** Student build target; completed instructor reference in `instructor-reference/` (see `VALIDATION.md`)  
 **Backend template:** https://github.com/cloudband-solutions/default_api_fast  
@@ -22,10 +22,10 @@ The goal is a complete vertical slice rather than a production-grade project man
 
 - **Backend:** `cloudband-solutions/default_api_fast` (Fast/Python API template). Reuse its routing, model, schema, service/repository, configuration, migration, and authentication conventions as found in the codebase.
 - **Frontend:** `cloudband-solutions/admin-panel-web` (React). Reuse its layouts, navigation, routes, form controls, API client, styling, error handling, and authentication conventions as found in the codebase.
-- **Database:** PostgreSQL for local development, consistent with the course environment. Use the backend's existing ORM, migration tooling, and DB configuration.
+- **Database:** SQLite for local development, using the existing ORM and Alembic migrations. Use `sqlite:///storage/development.sqlite3` for development and `sqlite:///test.sqlite3` for tests, from the API directory. Preserve foreign-key enforcement; never point destructive tests at development data.
 - **Existing `User`:** The backend already provides a `User` model. **Do not create a second user model or users table.** Reference the existing user ID using the actual type and naming convention discovered in the template.
 - **Authentication:** Reuse existing login/session/token behavior; do not build a new authentication system. If the starter project does not expose user-list or authentication capabilities, report the gap and implement only the smallest compatible integration needed, after checking existing conventions.
-- **Runtime:** Frontend, API, and PostgreSQL should run locally using documented project commands. Docker may be used for PostgreSQL; do not require containerizing all services if the templates already support local development.
+- **Runtime:** Frontend and API run locally using direct Python and npm commands. SQLite uses local files and requires no database server or Docker. State working directories, environment variables and platform-specific interpreter paths explicitly.
 
 > **Repository inspection requirement:** Exact file locations, URL prefixes, user identifier types, pagination conventions, and package scripts are deliberately not invented here. Inspect the repositories, document the findings, and adapt the illustrative endpoint paths below to any existing API prefix or response envelope. Preserve the logical contract.
 
@@ -318,7 +318,7 @@ Confirm at minimum:
 
 The MVP is complete when all of the following are true:
 
-- [ ] The backend and frontend run locally, connected to PostgreSQL.
+- [ ] The backend and frontend run locally, connected to SQLite.
 - [ ] Only `Category` and `Issue` are added as new domain models.
 - [ ] `Issue.assigned_user_id` references the existing backend `User` model.
 - [ ] Database migrations apply successfully on a fresh development database.
@@ -329,7 +329,7 @@ The MVP is complete when all of the following are true:
 - [ ] Validation errors, loading states, and delete confirmation are handled.
 - [ ] Basic automated backend tests pass and the frontend builds without errors.
 - [ ] A manual browser demonstration covers: create category → create issue → assign user → change status → filter → delete issue.
-- [ ] Setup instructions identify actual commands/environment variables for running both repositories and PostgreSQL.
+- [ ] Setup instructions identify actual commands/environment variables for running both repositories and their separate SQLite development/test files.
 
 ## 11. Out of Scope for the Workshop MVP
 

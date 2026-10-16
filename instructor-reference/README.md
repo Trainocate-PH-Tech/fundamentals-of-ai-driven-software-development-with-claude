@@ -1,95 +1,33 @@
-# Tested instructor solution
+# Completed instructor solution — direct SQLite rehearsal
 
-See [Windows setup](../WINDOWS_SETUP.md). In PowerShell, inline `./workshop` commands use `py -3.14 -m tools.workshop`; run from the course root.
+Open this directory as the active root; its two app folders already contain the
+completed solution. Follow [the instructor rehearsal](../GUIDE.md#rehearse-the-completed-reference-before-class)
+and M4–M7 in the guide. Do not clone over these folders or apply baseline patches.
 
-Source is kept separately from student work. Run from the **course root**:
+Install Python/npm locks directly. Create storage and configure a local SQLite
+`.env` yourself, preserving existing settings. Run Alembic, existing admin seed,
+then tracker seed twice. Direct pytest uses APP_ENV=test and
+DATABASE_URL=sqlite:///test.sqlite3 from the API directory. Development uses
+sqlite:///storage/development.sqlite3. There is no database service to start.
 
-```bash
-./workshop --reference doctor
-./workshop --reference setup
-./workshop --reference db up
-./workshop --reference db migrate
-./workshop --reference db seed
-./workshop --reference test
-./workshop --reference build
-```
+Use API port 3001 and frontend port 8001; configure API_BASE_URL and WEB_PORT
+accordingly. Run Uvicorn and npm start in separate terminals. The local demo login
+is admin@example.com / password; seeding resets this account for teaching only.
+Install Chromium, run the existing Playwright suite with E2E_BASE_URL on 8001 and
+E2E_API_URL on 3001, and perform the specification's browser demo.
 
-**PowerShell 7.4+ (Windows):**
+Windows uses `.venv/Scripts/python.exe` and npm.cmd; Linux/WSL uses
+`.venv/bin/python` and npm. Exact alternatives and environment isolation are in
+[the guide](../GUIDE.md). Stop foreground processes with Ctrl+C. Preserve the SQLite
+file to retain development data; do not use destructive tests against that file.
 
-```powershell
-py -3.14 -m tools.workshop --reference doctor
-py -3.14 -m tools.workshop --reference setup
-py -3.14 -m tools.workshop --reference db up
-py -3.14 -m tools.workshop --reference db migrate
-py -3.14 -m tools.workshop --reference db seed
-py -3.14 -m tools.workshop --reference test
-py -3.14 -m tools.workshop --reference build
-```
+Pinned upstreams remain:
 
-Then run in separate terminals:
+- API: cloudband-solutions/default_api_fast, 6afada28350e93d5a2cdff7dddcbe88c2036e299.
+- Web: cloudband-solutions/admin-panel-web, 47578e05f4cca5c035ea51c0b5e92b55d0818928.
 
-```bash
-./workshop --reference start api
-```
-
-**PowerShell 7.4+ (Windows):**
-
-```powershell
-py -3.14 -m tools.workshop --reference start api
-```
-
-```bash
-./workshop --reference start web
-```
-
-**PowerShell 7.4+ (Windows):**
-
-```powershell
-py -3.14 -m tools.workshop --reference start web
-```
-
-Open `http://localhost:8001/#/login`; local demo account:
-`admin@example.com` / `password`. The seed creates/updates this account for local
-teaching use. API documentation is `http://localhost:3001/docs`. The reference
-uses development PostgreSQL on 54331 and test PostgreSQL on 54332; student ports
-are different. Stop foreground servers with Ctrl+C; stop DBs with
-`./workshop --reference db stop`. Dev volume persists; test storage is disposable.
-
-```bash
-(cd instructor-reference/issuetrackerweb && npx playwright install chromium)
-./workshop --reference e2e
-```
-
-**PowerShell 7.4+ (Windows):**
-
-```powershell
-Push-Location instructor-reference/issuetrackerweb
-try { npx.cmd playwright install chromium } finally { Pop-Location }
-py -3.14 -m tools.workshop --reference e2e
-```
-
-Pinned upstreams (the workshop patches extend these, never latest):
-
-- API: `cloudband-solutions/default_api_fast`, `6afada28350e93d5a2cdff7dddcbe88c2036e299`.
-- Web: `cloudband-solutions/admin-panel-web`, `47578e05f4cca5c035ea51c0b5e92b55d0818928`.
-
-Python dependencies are frozen in `issuetrackerapi/requirements.lock.txt`.
-Node dependencies use `issuetrackerweb/package-lock.json`; use `npm ci`.
-Reference tested on Python 3.14.3, Node 24.13.0 and PostgreSQL 17.6 on Linux.
-The original template READMEs remain upstream references; course runner commands
-are authoritative for this PostgreSQL workshop. Existing SQLite configuration
-remains for upstream tests and compatibility, not the main course database.
-
-Baseline fixes: focused pytest selection, PostgreSQL fixture safety, SQLAlchemy URL
-assertion compatibility, undeclared frontend component assignments, accessible login
-labels, configurable web port and compatible dependency audit fixes. Final UI also supplies real sidebar link targets.
-The reference adds two models, migrations, category/issue API, safe assignees,
-search/filters, React integration and browser tests. Existing User/auth remain.
-See [validation](../VALIDATION.md) for actual outcomes and limits.
-
-The reference directories are ordinary source files so a parent course repository
-can track them without accidental nested Git links. Local template Git metadata
-used during authoring is kept under ignored `.workshop/upstream-git/`; it is not
-needed to run the reference. Students' generated applications remain independent
-Git repositories. Checkpoint verification can clone the pinned upstreams if the
-local authoring cache is absent.
+The reference is ordinary source, not nested Git submodules. Original template
+READMEs remain upstream references; the current teaching commands are in the guide.
+The source also retains PostgreSQL compatibility and its conditional migration
+test. Record skips explicitly; use the guide's SQLite migration-preservation
+exercise for this delivery. See [validation](../VALIDATION.md) for actual outcomes.

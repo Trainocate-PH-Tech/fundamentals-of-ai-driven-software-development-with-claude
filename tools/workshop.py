@@ -1,4 +1,4 @@
-"""Reproducible local workshop commands; no shell evaluation."""
+"""Historical PostgreSQL maintenance launcher; teaching uses direct SQLite commands."""
 import argparse
 import hashlib
 import json

@@ -1,11 +1,8 @@
-# Recovery without losing work
+# Manual recovery without losing work
 
-See [Windows setup](../WINDOWS_SETUP.md). In PowerShell, inline `./workshop` commands use `py -3.14 -m tools.workshop`; run from the course root.
-
-Each numbered directory contains **cumulative** patches against the pinned upstream
-commits, not against the preceding checkpoint. Never apply successive patches to
-an existing working tree. The runner clones upstream at the exact commits and
-applies one checkpoint into a new destination. Existing destinations are rejected.
+Each checkpoint is a cumulative source patch against the pinned upstream commit,
+not the preceding checkpoint. Apply exactly one patch to each newly cloned app.
+Never stack patches or reset/delete a student's existing work.
 
 | Checkpoint | Implemented result | Relevant gate |
 |---|---|---|
@@ -17,38 +14,19 @@ applies one checkpoint into a new destination. Existing destinations are rejecte
 | 05-filters | Search, filters, stable pagination | test spec/tracker/test_filters.py |
 | 06-frontend | Complete reference including frontend/browser tests | test + build + e2e |
 
-Example from course root (choose a new destination if it already exists):
+Stop the student's API and frontend with Ctrl+C. Follow the guide's
+[manual cloning steps](../GUIDE.md#m2-clone-the-pinned-templates-explicitly) using a
+new sibling destination such as issue-tracker-recovery. In the explicit Git patch
+commands substitute the desired checkpoint directory for 00-baseline. All other
+clone/pin commands stay the same. Run git apply --check before applying each patch.
 
-```bash
-./workshop recover 06-frontend recovery/completed
-./workshop --workspace recovery/completed setup
-./workshop --workspace recovery/completed db up
-./workshop --workspace recovery/completed db migrate
-./workshop --workspace recovery/completed db seed
-./workshop --workspace recovery/completed test
-./workshop --workspace recovery/completed build
-```
+Create root instructions, the SQLite profile and local environments as in M3–M7.
+Select the recovered root as your working directory; there are no workspace flags.
+Keep its SQLite files separate from the student's files. Use direct migrations,
+pytest and npm commands; baseline has only the admin seed, while 01-data and later
+also provide app.seed_tracker. Browser tests become available at 06-frontend.
 
-**PowerShell 7.4+ (Windows):**
-
-```powershell
-py -3.14 -m tools.workshop recover 06-frontend recovery/completed
-py -3.14 -m tools.workshop --workspace recovery/completed setup
-py -3.14 -m tools.workshop --workspace recovery/completed db up
-py -3.14 -m tools.workshop --workspace recovery/completed db migrate
-py -3.14 -m tools.workshop --workspace recovery/completed db seed
-py -3.14 -m tools.workshop --workspace recovery/completed test
-py -3.14 -m tools.workshop --workspace recovery/completed build
-```
-
-Recovered workspaces use the **student** ports; stop student servers/databases before
-running a recovered workspace. Each workspace has a separate Compose project/volume,
-but host ports still conflict. `--reference` has separate ports and can coexist.
-Pass the same `--workspace recovery/completed` to start/test/build/e2e/db stop.
-Run the runner from the course root; do not copy it alone into recovered apps.
-
-For continued Claude work, keep Claude at the course root and explicitly supply
-recovery paths and matching runner arguments in the plan. Do not silently use the
-student profile's root paths. Copy the relevant outputs to a handoff before changing
-workspaces. Compare your code with recovery code, explain differences, and decide
-which implementation to continue; recovery is not a merge operation.
+Recovered servers use student ports 3000/8000, so stop the old servers before starting
+the new ones. Start Claude at the recovered root and give it exact application paths,
+accepted plan and handoff. Compare sources before deciding which work to continue;
+recovery is not a merge and does not prove acceptance gates passed.

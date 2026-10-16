@@ -1,54 +1,45 @@
-# Reusable engineering kit
+# Reusable instruction examples — manual adoption
 
-See [Windows setup](../WINDOWS_SETUP.md). In PowerShell, inline `./workshop` commands use `py -3.14 -m tools.workshop`; run from the course root.
+These files are reference material, not a required installation. Core exercises use
+ordinary Claude messages and direct Python, npm, Git and Playwright commands.
+The SQLite project profile records working directories, environment selection and
+verification targets; replace those facts when transferring to another application.
 
-Run `./workshop install-kit` at the course root. Missing files are installed,
-identical files retained, and conflicts staged under `.workshop/proposed/` for
-review. Existing student instructions and artifacts are never overwritten. Merge
-intentional changes, restart Claude and inspect `/memory`, `/agents` and skill discovery.
+## Adopt selected files yourself
 
-The project profile separates verified baseline facts from target requirements.
-It defaults to student apps; a reference or recovery task must explicitly select
-its workspace. CLAUDE.md imports AGENTS.md and that profile.
+Read template/AGENTS.md, template/CLAUDE.md and template/workflow/project.md in your
+editor. Create corresponding files in a new project's root, preserving existing
+instructions and merging deliberately. Copy only needed `.claude/agents/`, rules
+and settings after review. Do not overwrite existing permissions or unrelated hooks.
+The course [manual setup](../GUIDE.md#m3-write-the-root-instructions-yourself)
+provides exact initial contents and shell instructions.
 
-Invoke skills **inside Claude**, not Bash:
+Restart Claude. Inspect `/memory` and actual file reads. Create/invoke the read-only
+reviewers as shown in [the subagent exercise](../GUIDE.md#m8-create-and-invoke-subagents-yourself).
+Additional definitions in template/.claude/agents are optional examples; create or
+copy the chosen file before requesting its role by name. Subagents return reports;
+the human or main session runs commands, owns changes and saves the evidence.
 
-```text
-/workshop-plan 02-categories Implement authenticated category CRUD only.
-```
-
-Read and accept the returned plan. Leave Plan Mode, save it to
-`workshop-output/milestones/02-categories/plan.md`, then explicitly authorize:
-
-```text
-I accept the scope in workshop-output/milestones/02-categories/plan.md.
-```
-
-Then send the skill invocation as its own message:
+## Use ordinary requests
 
 ```text
-/workshop-implement 02-categories workshop-output/milestones/02-categories/plan.md
+Plan category CRUD in issuetrackerapi only. Read the project instructions,
+specification and existing patterns. Name source/test paths, validation, integrity
+constraints, risks and direct verification commands. Do not implement yet.
 ```
 
-A slash command should be submitted as its own message if the client does not
-recognize it after other text. The acceptance sentence may be sent first.
+Review the plan, leave Plan Mode, save it, then explicitly accept its scope:
 
 ```text
-/workshop-verify 02-categories workshop-output/milestones/02-categories/plan.md Category CRUD and integrity
+I accept workshop-output/milestones/02-categories/plan.md. Implement only that scope.
+Use direct commands and the documented isolated SQLite test environment. Preserve
+unrelated work. Record actual commands, exit codes, skips and acceptance evidence.
 ```
 
-Each milestone stores plan.md, review.md, evidence.md, handoff.md and logs/.
-Evidence includes workspace, app revisions, dirty state, commands, exit codes and
-acceptance criteria. Preserve prior runs; add a dated run section or a new log name.
-Never treat a saved plan as implicit approval. Missing required arguments prompt
-clarification before application edits. Verification does not auto-repair failures.
+After verification, ask a named reviewer for independent source-based findings.
+Maintain plan.md, review.md, evidence.md, handoff.md and distinct logs per milestone.
+A saved plan is not approval and a review is not test execution.
 
-Installed read-only roles: workspace-scout (request tracing), workshop-investigator
-(one bug hypothesis), backend-reviewer (API/integrity), ui-reviewer (UI/integration),
-and workshop-reviewer (general plan/acceptance review). All have Read/Glob/Grep only.
-The main session owns commands, edits, report saving and independent reproduction.
-See [use-case recipes](../CLAUDE_USE_CASES.md) for task selection and output examples.
-
-For another project, copy template contents including `.claude/`, adapt the profile
-and replace course runner commands with the project's actual commands. Review rules
-and permissions. Test one bounded change before adopting the kit broadly.
+Optional skill lessons teach how students create their own procedures. They do not
+provide a mandatory orchestration layer. Historical launcher/installer code remains
+for maintenance only and is not part of the teaching path.

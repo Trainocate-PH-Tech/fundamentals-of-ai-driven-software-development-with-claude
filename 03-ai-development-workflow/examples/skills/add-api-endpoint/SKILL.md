@@ -1,11 +1,10 @@
 ---
 name: add-api-endpoint
-description: Legacy example directing API work to the canonical milestone workflow.
+description: Plan a bounded API endpoint using existing application patterns.
 disable-model-invocation: true
 ---
-
-This example is retained for earlier course links. Use the installed workshop-plan,
-workshop-implement and workshop-verify procedures described in workflow-kit/README.md.
-Do not independently implement this request: $ARGUMENTS. Return the appropriate
-canonical invocation with a milestone ID and plan path. If missing, ask for those
-inputs. Do not assume a plan is accepted or bypass Plan Mode.
+For $ARGUMENTS, read root/app instructions, profile and specification. Inspect the
+relevant route, schemas, operations and tests. Return scope, proposed files, auth,
+validation, integrity rules and direct verification commands. Do not implement.
+Ask for missing requirements and wait for the user to accept the plan. This optional
+skill packages a procedure; ordinary Claude requests can perform the same task.

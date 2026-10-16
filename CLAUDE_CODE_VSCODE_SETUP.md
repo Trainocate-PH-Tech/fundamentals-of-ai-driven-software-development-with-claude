@@ -1,6 +1,6 @@
 # Set up Claude Code in VS Code
 
-For the full application toolchain and shell-specific exercises, follow [Windows setup](WINDOWS_SETUP.md). Claude installation alone does not install Python, Node, Git, or Docker.
+For the full application toolchain and shell-specific exercises, follow [Windows setup](WINDOWS_SETUP.md). Claude installation alone does not install Python, Node, or Git.
 
 [Workshop home](README.md) · [Project setup](01-project-setup/README.md) · [Terminal guide](CLAUDE_CODE_TERMINAL.md)
 
@@ -11,7 +11,7 @@ Documentation checked: 2026-10-15. The steps below are for participants; no exte
 1. Install or update VS Code; Claude Code requires VS Code 1.94.0 or later.
 2. Open Extensions with **Ctrl+Shift+X** on Windows/Linux or **Cmd+Shift+X** on macOS.
 3. Search for **Claude Code** and install the official Anthropic extension.
-4. Use **File → Open Folder** to open the main workshop directory containing `README.md` and `SOFTWARE_SPECIFICATIONS.md`.
+4. Use **File → Open Folder** to open the active project root created in Module 1, containing both application folders and `SOFTWARE_SPECIFICATIONS.md`.
 5. Open the Command Palette, search for **Claude Code**, and choose **Open in New Tab**. If the extension is missing, use **Developer: Reload Window**.
 
 The extension includes the CLI needed for its chat panel. Running `claude` yourself in the integrated terminal requires the separate installation in the [terminal guide](CLAUDE_CODE_TERMINAL.md). See [official VS Code setup](https://code.claude.com/docs/en/vs-code).
@@ -32,7 +32,7 @@ A key set in VS Code's integrated terminal does not update the already-running e
 4. In that same terminal, change to the workshop directory and launch:
 
    ```text
-   cd path/to/fundamentals-of-ai-driven-software-development-with-claude
+   cd path/to/issue-tracker-manual
    code .
    ```
 
@@ -49,9 +49,10 @@ For WSL, SSH, or a dev container, credentials must be available where the extens
 Use this first prompt in the Claude Code panel:
 
 ```text
-Read @AGENTS.md, @README.md, and @SOFTWARE_SPECIFICATIONS.md.
-Summarize the workshop goals and list the five lesson directories.
-Check whether issuetrackerapi and issuetrackerweb exist.
+Read CLAUDE.md, AGENTS.md, workflow/project.md and SOFTWARE_SPECIFICATIONS.md.
+Identify the active app paths, SQLite development/test targets and direct commands.
+Check whether issuetrackerapi and issuetrackerweb exist; distinguish observed source
+from target features. Do not assume the downloaded lesson folders are in this workspace.
 Do not edit files or install anything yet.
 ```
 

@@ -25,7 +25,7 @@ trace. If a tool cannot inspect it, give me exact manual inspection steps.
 ## Expected evidence and verification
 
 Expected: identify unavailable API when that is the deliberately introduced failure,
-restore the service and rerun ./workshop e2e. Use the trace command printed by
+restore the service and rerun npm run test:e2e from issuetrackerweb (PowerShell: npm.cmd run test:e2e). Use the trace command printed by
 Playwright for the actual trace path; do not invent a successful browser observation.
 Compare failed and passing runs with timestamps, workspace and source state.
 

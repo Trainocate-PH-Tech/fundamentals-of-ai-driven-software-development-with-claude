@@ -9,7 +9,7 @@ do not read instructor-reference or recovery unless the task explicitly selects 
 | Understand unfamiliar behavior | Read-only exploration; scout for an isolated trace | File-backed request map |
 | Resolve cross-file uncertainty | Plan Mode | Accepted scope and verification criteria |
 | Make a small, obvious correction | Direct bounded edit | Reviewed diff and focused check |
-| Repeat a proven process | Named skill | Milestone artifacts and actual results |
+| Repeat a proven process | Optional student-created skill | Milestone artifacts and actual results |
 | Investigate competing explanations | Read-only investigator | Evidence and a discriminating next check |
 | Review an API/UI change | Specialized reviewer | Reproducible findings and evidence gaps |
 | Catch predictable syntax mistakes | Tested hook | Observed event feedback |
@@ -19,11 +19,17 @@ Do not add a planning ceremony to every typo fix. Do use a plan when scope, data
 impact or dependencies are uncertain. Subagents help isolate questions; keep one
 implementation owner until file and database isolation are deliberately designed.
 
+Before invoking a named reviewer or investigator, create its definition manually
+as taught in Modules 1 and 3. Optional role examples are in
+[the instruction templates](workflow-kit/README.md); inspect and copy the selected
+file, restart Claude, then confirm real task activity. A role name in a prompt does
+not install an agent or prove delegation occurred.
+
 ## Standard task and evidence contract
 
 Every core task supplies: milestone ID, active app paths, observed problem or target
 behavior, relevant inputs, allowed changes, expected output and verification command.
-Skills use the ID to write under `workshop-output/milestones/<id>/`:
+The main session saves evidence under `workshop-output/milestones/<id>/`:
 
 - `plan.md`: observed implementation, requirements, proposed changes and acceptance checks.
 - `review.md`: reviewer/task identity, supplied paths, findings and main-session dispositions.
@@ -41,7 +47,7 @@ its provenance and recheck stale claims. No automated artifact migration is requ
 In Plan Mode:
 
 ```text
-/workshop-plan 02-categories Implement category CRUD in issuetrackerapi only. Read the existing controller/operation conventions and specification. Name source and test paths, errors, integrity constraints and checks. Do not implement or inspect the instructor solution.
+Plan milestone 02-categories using SQLite and direct commands. Propose category CRUD in issuetrackerapi only. Read the existing controller/operation conventions and specification. Name source and test paths, errors, integrity constraints and checks. Do not implement or inspect the instructor solution.
 ```
 
 After inspecting and accepting the plan, leave Plan Mode and send:
@@ -50,16 +56,16 @@ After inspecting and accepting the plan, leave Plan Mode and send:
 I accept this category plan. Save it to workshop-output/milestones/02-categories/plan.md without changing its scope. Do not implement yet.
 ```
 
-Then invoke:
+Then ask Claude:
 
 ```text
-/workshop-implement 02-categories workshop-output/milestones/02-categories/plan.md
+I accept the plan in workshop-output/milestones/02-categories/plan.md. Implement only milestone 02-categories using direct commands and the SQLite test environment. Record actual verification evidence.
 ```
 
 And:
 
 ```text
-/workshop-verify 02-categories workshop-output/milestones/02-categories/plan.md Category CRUD and protected deletion
+Verify milestone 02-categories against the accepted plan in workshop-output/milestones/02-categories/plan.md using direct commands and the SQLite test environment. Category CRUD and protected deletion
 ```
 
 If verification fails, inspect the evidence and authorize a bounded repair:
@@ -80,7 +86,7 @@ a first response to an unexplained failure.
 ```text
 In issuetrackerapi, an issue loses its assignee when PATCH changes only its title.
 Read the supplied failing output and assignment tests, schema, handler and operation.
-Do not read instructor-reference. First reproduce with ./workshop test using the
+Do not read instructor-reference. First reproduce with direct pytest from issuetrackerapi with APP_ENV=test and DATABASE_URL=sqlite:///test.sqlite3 using the
 dedicated test DB. Compare request parsing, update logic and persistence as causes.
 Show the evidence distinguishing them. Propose the smallest repair before editing.
 After my acceptance, fix it, run assignment and issue regressions, and record the
@@ -95,7 +101,7 @@ mismatch rather than deliberately breaking correct application code.
 ## Recipe: delegate investigation without delegating ownership
 
 ```text
-Use workshop-investigator to inspect one hypothesis: omitted PATCH fields are
+Use bug-investigator to inspect one hypothesis: omitted PATCH fields are
 being converted to null. Supply the active backend path, assignment failure log,
 request schema and issue handler/operation paths. Ask it to cite evidence for and
 against this hypothesis and propose one discriminating check. No edits or commands.

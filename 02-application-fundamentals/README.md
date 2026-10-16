@@ -1,6 +1,6 @@
 # Module 2 — Build an evidence-based application map
 
-Windows users: complete [Windows setup](../WINDOWS_SETUP.md) first. Choose either the Bash or PowerShell block for each step, not both. Run terminal commands from the course root unless stated otherwise. Inline `./workshop` commands use `py -3.14 -m tools.workshop` in PowerShell; Claude slash commands and prompts are identical.
+Windows users: follow [Windows setup](../WINDOWS_SETUP.md). Run commands from the active project root unless stated otherwise; choose Bash or PowerShell, not both. Prompts go inside Claude.
 
 **Entry:** Module 1 baseline checks pass. **Result:** a verified request/data flow
 and contract map; no feature implementation yet.
@@ -26,8 +26,7 @@ Get-Content issuetrackerweb/src/js/helpers/AppHelper.js | Select-Object -First 1
 Trace login → browser token → API auth dependency → controller → operation →
 SQLAlchemy session → response → React state. Existing User IDs are strings;
 `/users` is admin-only. The tracker needs a small authenticated `/assignees`
-endpoint returning only ID/display name. PostgreSQL is explicit in this course,
-although the templates default to SQLite. UI navigation uses hash URLs.
+endpoint returning only ID/display name. SQLite is explicit in this course; development and tests use separate files. UI navigation uses hash URLs.
 
 **Claude prompt — guided:**
 
@@ -45,11 +44,24 @@ for null versus omitted assignee, without changing existing users.
 
 ## 2. Scoped rules and context budget
 
-The installed `.claude/rules/api-contract.md` scopes backend guidance using a
-`paths` frontmatter. Rules are persistent constraints; skills are invoked procedures.
-Keep verified findings in a short map rather than repeatedly attaching whole repos.
+Create `.claude/rules/api-contract.md` in your active project using the editor
+(create its parent folder if needed). Paste this complete file:
 
-**Guided:** read the installed rule and add a line requiring a direct database
+```markdown
+---
+paths:
+  - "issuetrackerapi/**/*.py"
+---
+Use existing authentication dependencies and database sessions. Validate at the API
+boundary and enforce uniqueness and relationships in the database. Add a regression
+test for each repaired defect. Preserve omitted PATCH fields; distinguish null.
+```
+
+The paths frontmatter scopes backend guidance. Rules are persistent constraints;
+optional skills package procedures. Keep verified findings in a short map rather
+than repeatedly attaching whole repositories. Restart and inspect the loaded rule.
+
+**Guided:** read your newly created rule and add a line requiring a direct database
 uniqueness test for category names. Ask Claude to plan duplicate-category handling
 and explain which rule applied. **Independent:** create a frontend rule scoped to
 `issuetrackerweb/src/**/*.js`, requiring labelled controls, loading/error/empty
@@ -58,7 +70,7 @@ states and existing auth headers. Probe it with an issue form planning request.
 ## 3. Subagent fact-check and monitoring
 
 ```text
-Use workspace-scout to trace and fact-check workshop-output/milestones/exploration/map.md. Give it
+Use architecture-reviewer to trace and fact-check workshop-output/milestones/exploration/map.md. Give it
 SOFTWARE_SPECIFICATIONS.md, workflow/project.md and both application paths. Focus
 on User identity, authentication, pagination and database configuration. Return
 path-backed discrepancies only. Main session: save the report to
@@ -74,7 +86,7 @@ and compare token/context usage with the broad review using `/context` and `/usa
 where available. Record usefulness and missing evidence, not just elapsed time.
 
 **Exit gate:** the map names real paths, distinguishes admin users from assignees,
-and explains PostgreSQL/test isolation. Run `./workshop test` if you changed any
+and explains SQLite/test isolation. Run `.venv/bin/python -m pytest spec` from the API directory with `APP_ENV=test` and `DATABASE_URL=sqlite:///test.sqlite3` (PowerShell: `& ./.venv/Scripts/python.exe -m pytest spec`) if you changed any
 executable configuration; purely factual map edits do not need another full run.
 Next: [Module 3](../03-ai-development-workflow/README.md).
 

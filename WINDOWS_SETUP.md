@@ -1,238 +1,135 @@
-# Windows setup and workshop delivery
+# Windows setup — direct commands and SQLite
 
-Use **Windows 11 x64 and PowerShell 7.4+** for the native route, or **WSL2 Ubuntu**
-for the Linux route. Both follow the same five modules, specification, and exit
-gates. Windows ARM and Windows PowerShell 5.1 are not the initial validation target.
-See [validation](VALIDATION.md) for actual checks; instructions and CI configuration
-alone do not establish that a Windows classroom rehearsal passed.
+Use Windows 11 x64 with **PowerShell 7.4+**, or WSL2 Ubuntu with Bash. Both follow the
+same five modules and SQLite acceptance gates. No Docker or database server is
+needed. Windows ARM and Windows PowerShell 5.1 are outside the initial validation
+target. See [validation](VALIDATION.md) for checks actually performed.
 
-## 1. Choose one workspace and shell
+## Native Windows prerequisites
 
-| Route | Project location | Terminal | Launcher from course root |
-|---|---|---|---|
-| Native Windows | A local folder such as `C:\Users\you\projects\issue-tracker-course` | PowerShell 7.4+ | `py -3.14 -m tools.workshop` |
-| WSL2 | `~/projects/issue-tracker-course` inside Ubuntu | Ubuntu Bash | `./workshop` |
-
-Use a local writable directory rather than a network share or synchronized folder.
-Spaces in paths are supported; quote paths. Never share `.venv` or `node_modules`
-between Windows and Linux. To change routes, use another clone and reinstall.
-Docker Desktop uses Linux containers for PostgreSQL in **both** routes; the native
-route runs Python, Node, Claude, and VS Code directly on Windows.
-
-## 2. Native prerequisites
-
-Run these in Windows Terminal's PowerShell tab. Windows may request elevation for
-installers; run normal workshop work without administrator privileges.
+Install prerequisites from a Windows terminal; installers may request elevation.
+Run ordinary project work without administrator privileges.
 
 ```powershell
 winget install --exact --id Microsoft.PowerShell
 winget install --exact --id Python.Python.3.14
 winget install --exact --id Git.Git
 winget install --exact --id Microsoft.VisualStudioCode
-winget install --exact --id Docker.DockerDesktop
-```
-
-Install **Node 24.x** using the Windows x64 installer from the
-[official Node downloads](https://nodejs.org/en/download). Select the 24 release;
-a package named “LTS” can advance to a different major version. Install standalone
-[ripgrep](https://github.com/BurntSushi/ripgrep#installation) if using optional `rg`
-commands; Claude's bundled search is not necessarily on your terminal PATH.
-
-Restart if the Docker installer requests it. Start Docker Desktop and select
-its WSL2 backend and **Linux containers**. Follow its supported Windows/virtualization
-requirements; a Windows container engine cannot run this course's PostgreSQL image.
-You do not need an Ubuntu development workspace for the native route.
-
-Open a **new PowerShell 7** terminal (run `pwsh` if the tab is Windows PowerShell).
-In VS Code, use **Terminal: Select Default Profile → PowerShell**, then open a new
-terminal. Enable failure propagation for each workshop terminal:
-
-```powershell
-$PSVersionTable.PSVersion
-$ErrorActionPreference = 'Stop'
-$PSNativeCommandUseErrorActionPreference = $true
-py -3.14 --version
-node --version
-npm.cmd --version
-git --version
-docker compose version
-docker info --format '{{.OSType}}'
-```
-
-Expected: PowerShell 7.4 or newer, Python 3.14.x, Node v24.x, and Docker `linux`.
-Use `npm.cmd`/`npx.cmd` in PowerShell to avoid blocked npm PowerShell shims. The
-workshop launcher resolves npm automatically; no activation script or execution
-policy bypass is needed. `doctor` verifies the required Python/Node major versions
-and Docker engine. Diagnose a failed check before proceeding.
-
-## 3. Claude Code and credentials
-
-Install and reopen the terminal:
-
-```powershell
 winget install --exact --id Anthropic.ClaudeCode
 ```
 
+Install Node **24.x** from the [official downloads](https://nodejs.org/en/download).
+Select that major version rather than assuming a package named LTS still means 24.
+Open a new PowerShell 7 terminal (`pwsh`). In VS Code select the PowerShell terminal
+profile. In each new workshop terminal, enable native command failure propagation:
+
 ```powershell
+$ErrorActionPreference = 'Stop'
+$PSNativeCommandUseErrorActionPreference = $true
+$PSVersionTable.PSVersion
+py -3.14 --version
+py -3.14 -c "import sqlite3; print(sqlite3.sqlite_version)"
+node --version
+npm.cmd --version
+git --version
 claude --version
 claude doctor
-claude
 ```
 
-Use the browser sign-in flow for your supported subscription or Console account.
-If your training uses a Console API key instead, load it into the **current process**
-without putting the secret in command history, a prompt, or a repository file:
+Expected: PowerShell 7.4+, Python 3.14, Node 24 and working Git/Claude. SQLite is
+included with Python. Use `npm.cmd` and `npx.cmd` to avoid blocked PowerShell shims;
+there is no need to disable execution policy or activate a venv script.
+
+## Authenticate Claude
+
+Run `claude` and follow the supported account's browser sign-in. If using a Console
+API key instead, enter it without placing it in command history:
 
 ```powershell
 $env:ANTHROPIC_API_KEY = Read-Host 'Anthropic API key' -MaskInput
 claude
 ```
 
-Approve the API-key authentication choice when Claude asks. API billing is separate
-from subscription usage. To return to browser sign-in, exit Claude and remove the
-variable before launching again:
+Approve API-key use if Claude asks; API billing is separate from subscription use.
+Never print the key, save it in an application `.env`, or include it in prompts/logs.
+To return to account login, exit Claude and clear the process variable:
 
 ```powershell
 Remove-Item Env:ANTHROPIC_API_KEY -ErrorAction SilentlyContinue
 claude
 ```
 
-Do not print environment variables to verify a secret. VS Code inherits environment
-from its launching process; configure authentication in the environment where the
-extension or CLI actually runs. See [terminal authentication](CLAUDE_CODE_TERMINAL.md)
-and [VS Code setup](CLAUDE_CODE_VSCODE_SETUP.md).
+See [terminal authentication](CLAUDE_CODE_TERMINAL.md) and
+[VS Code setup](CLAUDE_CODE_VSCODE_SETUP.md). Authentication belongs to the environment
+where Claude runs; Windows credentials do not establish a WSL session's access.
 
-The course installs Git for Windows, which gives Claude its Bash tool. The human
-terminal can still be PowerShell. Tell Claude the actual execution shell; Bash tool
-calls on native Windows must use Windows Python, not WSL Python. In Git Bash,
-`python -m tools.workshop` works after verifying `python --version` is 3.14.
-If Claude cannot find Git Bash, use the documented `CLAUDE_CODE_GIT_BASH_PATH`
-setting with your actual Git installation path. Never copy a machine-specific
-path into shared settings for the class.
+## Create and operate the workspace
+
+Start at the downloaded course root. Follow [Module 1](01-project-setup/README.md)
+and its links to the guide's exact manual steps. Create a fresh sibling workspace
+in a local writable folder, not a synchronized/network directory. Quote paths with
+spaces. The active root contains issuetrackerapi and issuetrackerweb.
+
+Use PowerShell blocks for file creation, dependencies, migrations, servers and tests.
+From issuetrackerapi the interpreter is `& ./.venv/Scripts/python.exe`; from
+issuetrackerweb use `npm.cmd`. No launcher or installation kit is required.
+The API uses `sqlite:///storage/development.sqlite3`; isolated tests use exactly
+`sqlite:///test.sqlite3` from the API directory. Always restore test environment
+variables after a check using the guide's try/finally block.
+
+Create agent files in `.claude/agents/` yourself as shown in the guide. Start Claude
+at the active root and request a reviewer by name in an ordinary message. Observe
+the actual delegation row, tools and output. Optional skills are student-authored
+exercises; none is required to plan, implement or verify the application.
 
 **Prompt inside Claude:**
 
 ```text
 This workspace runs natively on Windows. Read CLAUDE.md and workflow/project.md.
-Identify your active shell before running commands. In PowerShell use
-py -3.14 -m tools.workshop; in Git Bash verify Windows Python 3.14 and use
-python -m tools.workshop. Do not invoke WSL, reuse Linux virtual environments,
-or read .env files. Report the workspace and runtime you will use.
+Identify your active shell, working directory and Python interpreter before running
+commands. Use direct Python, npm and Git commands with SQLite. In PowerShell use
+Scripts/python.exe, npm.cmd and PowerShell environment syntax. Do not invoke WSL
+or reuse Linux environments. Do not read environment files or print credentials.
 ```
 
-## 4. Complete the workshop in PowerShell
+Git for Windows supplies Git Bash, which Claude may use even when the human's
+terminal is PowerShell. Check the tool's actual shell. A Git Bash tool call on
+native Windows still uses the Windows venv (`.venv/Scripts/python.exe`), not
+`.venv/bin/python`. If Claude cannot find Git Bash, follow its official
+[Windows setup](https://code.claude.com/docs/en/setup) for the local path setting.
 
-Open the downloaded/cloned course folder in VS Code. Its root contains `workshop`,
-`tools`, and the five numbered module folders. Run all blocks from this root unless
-explicitly told otherwise. Module pages provide Bash and PowerShell alternatives;
-**run one alternative only**. Slash commands such as `/workshop-plan` go inside
-Claude, never in the PowerShell terminal.
+## WSL2 Ubuntu alternative
 
-1. [Module 1](01-project-setup/README.md): run doctor, setup, databases, migrations,
-   and kit installation. Test/build the baseline. Do not seed tracker categories yet.
-2. [Module 2](02-application-fundamentals/README.md): use `Get-Content` to inspect the
-   existing request flow; delegate a bounded read-only review of the map.
-3. [Module 3](03-ai-development-workflow/README.md): create a skill using the supplied
-   single-quoted PowerShell here-string. It preserves literal `$ARGUMENTS`.
-   Create/adapt reviewers, restart Claude, inspect `/agents`, and monitor actual
-   delegated tool calls as instructed. The instructor guide includes a full
-   PowerShell subagent creation example.
-4. [Module 4](04-issue-tracker-implementation/README.md): implement each slice and
-   run its gate. Use separate terminals for API and frontend; Ctrl+C stops each.
-5. [Module 5](05-testing-debugging-and-demo/README.md): capture test/build/browser
-   logs with `Tee-Object`, verify hook activation, and perform the browser demo.
-
-For HTTP diagnostics, avoid ambiguous `curl` aliases. A successful health check
-uses this command once the student API is running:
-
-```powershell
-Invoke-RestMethod -Uri 'http://localhost:3000/health'
-```
-
-For JSON bodies, build a PowerShell object and pipe to `ConvertTo-Json`; do not put
-live authentication tokens in copied examples or evidence logs.
-
-To use the completed instructor solution, follow the PowerShell blocks in
-[GUIDE.md](GUIDE.md). `--reference` uses separate ports. Recovery retains the same
-interface and refuses to overwrite an existing destination:
-
-```powershell
-py -3.14 -m tools.workshop db stop
-py -3.14 -m tools.workshop recover 06-frontend 'recovery/windows completed'
-py -3.14 -m tools.workshop --workspace 'recovery/windows completed' setup
-py -3.14 -m tools.workshop --workspace 'recovery/windows completed' db up
-py -3.14 -m tools.workshop --workspace 'recovery/windows completed' db migrate
-py -3.14 -m tools.workshop --workspace 'recovery/windows completed' db seed
-py -3.14 -m tools.workshop --workspace 'recovery/windows completed' test
-py -3.14 -m tools.workshop --workspace 'recovery/windows completed' build
-```
-
-Only run this recovery example when you need the completed milestone. Stop other
-student/recovery servers first: recovered workspaces reuse student ports. Use the
-same `--workspace` for both `start` commands, `e2e`, and `db stop` afterward.
-
-## 5. WSL2 Ubuntu alternative
-
-From an elevated Windows terminal, install Ubuntu and restart when requested:
+From an elevated Windows terminal:
 
 ```powershell
 wsl --install -d Ubuntu
 wsl --list --verbose
 ```
 
-Confirm Ubuntu uses version 2. Enable Ubuntu under Docker Desktop's WSL integration.
-Open Ubuntu, install Linux Git, Python 3.14 and Node 24 using their official Linux
-instructions, and install Claude using the Bash instructions in
-[terminal setup](CLAUDE_CODE_TERMINAL.md). Ubuntu's default Python may not be 3.14;
-verify rather than assuming the distribution package meets the course version.
+Confirm Ubuntu uses version 2. Install Linux Python 3.14, Node 24, Git and Claude
+inside Ubuntu. Verify versions; the distribution's default Python may differ.
+Keep the course and active workspace under `~/projects`, not `/mnt/c`. Install
+VS Code's WSL extension and open the workspace using `code .` from Ubuntu.
+Confirm the editor status bar indicates WSL, then follow Bash blocks throughout.
+No Docker installation or integration is required for SQLite.
+Never share `.venv`, `node_modules` or live database files across Windows and WSL.
 
-Clone the course under `~/projects` inside Ubuntu, not `/mnt/c`. Install the VS Code
-WSL extension, run `code .` inside that clone, and confirm VS Code's status bar shows
-WSL. All subsequent terminal commands use the Bash blocks. Docker Desktop itself
-remains the Windows installation; do not install a second daemon inside Ubuntu.
-
-```bash
-python3 --version
-node --version
-docker compose version
-./workshop doctor
-```
-
-Keep authentication in the Linux environment where Claude runs. A successful
-native Windows sign-in or Python installation does not verify the WSL environment.
-
-## 6. Troubleshooting and acceptance
+## Troubleshooting and rehearsal
 
 | Symptom | Action |
 |---|---|
-| `py` not found | Reopen the terminal; verify the Python 3.14 installation includes the Windows launcher. |
-| `.venv` belongs to another OS | Use another clone or move the old environment aside, then rerun setup; never overwrite source or `.env`. |
-| `npm.ps1` blocked | Use `npm.cmd` or the workshop launcher; do not disable execution policy globally. |
-| Docker connection or image failure | Start Docker Desktop; check Linux-container mode, virtualization, and Docker's diagnostics. |
-| Database/API port in use | Stop the matching workspace's services and terminal processes before switching workspaces. |
-| Patch application fails | Use a fresh recovery destination. Preserve LF source and byte-exact patch files; do not use whitespace-ignore options to conceal a mismatch. |
-| Hook works in tests but not Claude | Check the actual hook shell, interpreter, matcher, active settings, and `/hooks`; restart and test a disposable file. |
-| Commands continue after failure | Enable the PowerShell preferences in section 2 in each terminal; record `$LASTEXITCODE` when diagnosing native tools. |
+| `py` missing | Reopen the terminal and confirm Python 3.14's launcher installation. |
+| `npm.ps1` blocked | Use npm.cmd/npx.cmd, not an execution-policy bypass. |
+| Wrong venv interpreter | Select the current OS's interpreter; reinstall in a separate workspace when changing OS. |
+| SQLite cannot open file | Check API working directory and create storage as shown in Module 1. |
+| SQLite database locked | Stop competing writers; keep development/test files separate and use one browser worker. |
+| Test isolation assertion fails | Use exactly sqlite:///test.sqlite3 from the API directory. |
+| Patch fails | Use a new destination and the exact pinned commit; preserve source/patch line endings. |
+| Hook fixture passes but no live feedback | Check active settings, actual hook shell and interpreter, then test a disposable edit. |
 
-Instructor Windows rehearsal checklist (record OS, versions, command, exit code,
-and actual outcome in a fresh milestone evidence file):
-
-- [ ] Fresh clone in a path with spaces: doctor, setup, migration, baseline tests/build.
-- [ ] Repeat setup: existing `.env` contents and student instructions preserved.
-- [ ] Completed reference: migration, seed twice, backend suite, frontend build.
-- [ ] Start both servers; install Chromium and pass browser acceptance.
-- [ ] Ctrl+C releases each server port; restart both successfully.
-- [ ] Recover baseline and final checkpoint into new directories and install each.
-- [ ] Create/invoke a skill and read-only subagent, inspect real task activity.
-- [ ] Hook fixture tests and live valid/invalid edit feedback; record skips explicitly.
-- [ ] Complete the specification's browser demonstration and save evidence.
-- [ ] Stop servers and workspace databases.
-
-Windows CI checks installation, tooling, process tests, hooks, documentation syntax,
-build, and patch application. It does **not** exercise Docker Desktop or establish
-Windows database/browser acceptance; complete the checklist on a Windows machine.
-
-References: [Claude Windows setup](https://code.claude.com/docs/en/setup),
-[Docker Windows requirements](https://docs.docker.com/desktop/setup/install/windows-install/),
-[Docker WSL integration](https://docs.docker.com/desktop/features/wsl/),
-[Microsoft WSL environment](https://learn.microsoft.com/en-us/windows/wsl/setup/environment).
+Before delivery, record OS/versions, commands and actual outcomes for fresh setup
+in a path with spaces; baseline tests/build; completed migration/seed/browser flow;
+Ctrl+C and restart; new-destination recovery; skill and subagent creation/discovery;
+and standalone plus live hook checks. Preserve development data on shutdown.
+CI configuration and Linux results are not proof of a completed Windows rehearsal.

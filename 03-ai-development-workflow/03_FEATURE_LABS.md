@@ -10,14 +10,18 @@ A plugin packages related skills/agents/hooks for sharing. Inspect the supplied
 `examples/plugins/issue-tracker-workshop/` manifest and plan-check skill before loading it. From course root:
 
 ```bash
-claude --plugin-dir ./03-ai-development-workflow/examples/plugins/issue-tracker-workshop
+claude --plugin-dir ../fundamentals-of-ai-driven-software-development-with-claude/03-ai-development-workflow/examples/plugins/issue-tracker-workshop
 ```
 
 **PowerShell 7.4+ (Windows):**
 
 ```powershell
-claude --plugin-dir ./03-ai-development-workflow/examples/plugins/issue-tracker-workshop
+claude --plugin-dir ../fundamentals-of-ai-driven-software-development-with-claude/03-ai-development-workflow/examples/plugins/issue-tracker-workshop
 ```
+
+The plugin path assumes the default sibling course-folder name; substitute the actual
+course clone path if different. Quote it if it contains spaces. This is an optional
+Claude plugin lesson, not a dependency of the manual application workflow.
 
 Inside Claude, invoke the namespaced command:
 
@@ -33,7 +37,7 @@ Do not publish a plugin or install third-party code as part of this exercise.
 ## Worktree isolation
 
 Worktrees give separate writing tasks separate files and branches. They do not
-give separate database ports or credentials. The core course uses one writer and
+give separate live SQLite files or server ports. The core course uses one writer and
 read-only reviewers, so worktrees are optional.
 
 **Guided:** after committing a clean API checkpoint, run:

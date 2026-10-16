@@ -12,8 +12,9 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--require-shells', action='store_true', help='Fail if Bash or PowerShell is missing (CI).')
 args = parser.parse_args()
 files = list(ROOT.glob('*.md'))
-for pattern in ['0[1-5]-*/*.md', 'workflow-kit/*.md', 'checkpoints/*.md', 'instructor-reference/*.md']:
+for pattern in ['0[1-5]-*/**/*.md', 'workflow-kit/**/*.md', 'workflow/*.md', '.claude/**/*.md', 'checkpoints/*.md', 'instructor-reference/*.md']:
     files.extend(ROOT.glob(pattern))
+files = sorted(set(files))
 errors = []
 counts = {'bash': 0, 'powershell': 0}
 shells = {'bash': shutil.which('bash'), 'powershell': shutil.which('pwsh')}
@@ -26,6 +27,12 @@ if os.name == 'nt':
 with tempfile.TemporaryDirectory(prefix='workshop-docs-') as tmp:
     for path in files:
         content = path.read_text(encoding='utf-8')
+        # Historical records retain the actual commands used at the time.
+        if path.name not in {'VALIDATION.md', 'WORKSHOP_REVIEW.md'}:
+            for forbidden in [r'/workshop-(?:plan|implement|verify)\b', r'\./workshop\s',
+                              r'\btools\.workshop\b', r'\binstall-kit\b']:
+                if re.search(forbidden, content):
+                    errors.append(f'{path.relative_to(ROOT)}: retired orchestration reference {forbidden}')
         for link in re.findall(r'\]\(([^)]+)\)', content):
             if link.startswith(('https:', 'http:', '#', 'app:')):
                 continue

@@ -19,21 +19,24 @@ class ToolingTests(unittest.TestCase):
             self.assertEqual((path/'CLAUDE.md').read_bytes(),original)
             self.assertFalse((path/'.workshop/proposed/CLAUDE.md').exists())
 
-    def test_expanded_kit_installs_roles_skills_and_preserves_conflicts(self):
+    def test_manual_templates_preserve_roles_without_orchestration_skills(self):
         with tempfile.TemporaryDirectory(prefix='kit paths ') as tmp:
             root=Path(tmp)
-            relative=Path('.claude/skills/workshop-implement/SKILL.md')
+            relative=Path('.claude/agents/acceptance-reviewer.md')
             existing=root/relative
             existing.parent.mkdir(parents=True)
-            existing.write_text('student-owned procedure')
+            existing.write_text('student-owned reviewer', encoding='utf-8')
             subprocess.run([sys.executable,str(ROOT/'tools/install_kit.py'),tmp],check=True,capture_output=True)
-            self.assertEqual(existing.read_text(encoding='utf-8'),'student-owned procedure')
-            self.assertIn('name: workshop-implement',(root/'.workshop/proposed'/relative).read_text(encoding='utf-8'))
-            for role in ['workspace-scout','workshop-investigator','backend-reviewer','ui-reviewer']:
+            self.assertEqual(existing.read_text(encoding='utf-8'),'student-owned reviewer')
+            self.assertIn('name: acceptance-reviewer',(root/'.workshop/proposed'/relative).read_text(encoding='utf-8'))
+            for role in ['architecture-reviewer','bug-investigator','backend-reviewer','ui-reviewer']:
                 content=(root/'.claude/agents'/f'{role}.md').read_text(encoding='utf-8')
                 self.assertIn('tools: Read, Glob, Grep',content)
-            for skill in ['workshop-plan','workshop-verify']:
-                self.assertTrue((root/'.claude/skills'/skill/'SKILL.md').exists())
+            for skill in ['workshop-plan','workshop-implement','workshop-verify']:
+                self.assertFalse((root/'.claude/skills'/skill/'SKILL.md').exists())
+            profile=(root/'workflow/project.md').read_text(encoding='utf-8')
+            self.assertIn('sqlite:///test.sqlite3', profile)
+            self.assertNotIn('./workshop', profile)
             self.assertTrue((root/'workshop-output/milestones').is_dir())
 
     def test_recovery_refuses_existing_destination(self):

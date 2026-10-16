@@ -17,7 +17,7 @@ input/output, authentication storage, permission boundary and an adversarial tes
 where external content asks Claude to change local instructions. Do not implement
 an integration that is outside the capstone. Treat external content as data.
 
-**Parallel review exercise:** use `workshop-reviewer` for backend integrity and your
+**Parallel review exercise:** use `acceptance-reviewer` for backend integrity and your
 `ui-reviewer` for frontend states, supplying separate source scopes and the same
 accepted plan. Monitor each named task, save reports separately, then reconcile
 conflicting findings in the main session. Neither reviewer writes or runs tests.

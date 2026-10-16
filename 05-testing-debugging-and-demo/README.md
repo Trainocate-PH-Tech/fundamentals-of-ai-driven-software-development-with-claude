@@ -1,6 +1,6 @@
 # Module 5 — Prove completion and package the workflow
 
-Windows users: complete [Windows setup](../WINDOWS_SETUP.md) first. Choose either the Bash or PowerShell block for each step, not both. Run terminal commands from the course root unless stated otherwise. Inline `./workshop` commands use `py -3.14 -m tools.workshop` in PowerShell; Claude slash commands and prompts are identical.
+Windows users: follow [Windows setup](../WINDOWS_SETUP.md). Run commands from the active project root unless stated otherwise; choose Bash or PowerShell, not both. Prompts go inside Claude.
 
 **Entry:** Module 4 integrated application. **Result:** reproducible checks,
 regression evidence and a handoff another developer can use.
@@ -10,7 +10,7 @@ regression evidence and a handoff another developer can use.
 Inside Claude:
 
 ```text
-/workshop-plan final Plan verification of every specification criterion against the completed student application. Identify source, command and browser evidence needed. No new feature implementation.
+Plan milestone final using SQLite and direct commands. Plan verification of every specification criterion against the completed student application. Identify source, command and browser evidence needed. No new feature implementation.
 ```
 
 Accept the plan, leave Plan Mode, and save it to
@@ -23,9 +23,9 @@ Keep API and frontend running in separate terminals. From the course root:
 mkdir -p workshop-output/milestones/final/logs
 set -o pipefail
 workshop_run_id=$(date -u +%Y%m%dT%H%M%SZ)
-./workshop test 2>&1 | tee "workshop-output/milestones/final/logs/${workshop_run_id}-backend.log"
-./workshop build 2>&1 | tee "workshop-output/milestones/final/logs/${workshop_run_id}-build.log"
-./workshop e2e 2>&1 | tee "workshop-output/milestones/final/logs/${workshop_run_id}-browser.log"
+(cd issuetrackerapi && APP_ENV=test DATABASE_URL=sqlite:///test.sqlite3 .venv/bin/python -m pytest spec) 2>&1 | tee "workshop-output/milestones/final/logs/${workshop_run_id}-backend.log"
+(cd issuetrackerweb && npm run build) 2>&1 | tee "workshop-output/milestones/final/logs/${workshop_run_id}-build.log"
+(cd issuetrackerweb && npm run test:e2e) 2>&1 | tee "workshop-output/milestones/final/logs/${workshop_run_id}-browser.log"
 ```
 
 **PowerShell 7.4+ (Windows):**
@@ -35,9 +35,22 @@ New-Item -ItemType Directory -Force -Path 'workshop-output/milestones/final/logs
 $ErrorActionPreference = "Stop"
 $PSNativeCommandUseErrorActionPreference = $true
 $workshop_run_id = [DateTime]::UtcNow.ToString("yyyyMMddTHHmmssfffffffZ")
-py -3.14 -m tools.workshop test 2>&1 | Tee-Object -FilePath "workshop-output/milestones/final/logs/${workshop_run_id}-backend.log"
-py -3.14 -m tools.workshop build 2>&1 | Tee-Object -FilePath "workshop-output/milestones/final/logs/${workshop_run_id}-build.log"
-py -3.14 -m tools.workshop e2e 2>&1 | Tee-Object -FilePath "workshop-output/milestones/final/logs/${workshop_run_id}-browser.log"
+& {
+    Push-Location issuetrackerapi
+    $prior_app_env = $env:APP_ENV
+    $prior_database_url = $env:DATABASE_URL
+    try {
+        $env:APP_ENV = 'test'
+        $env:DATABASE_URL = 'sqlite:///test.sqlite3'
+        & ./.venv/Scripts/python.exe -m pytest spec
+    } finally {
+        $env:APP_ENV = $prior_app_env
+        $env:DATABASE_URL = $prior_database_url
+        Pop-Location
+    }
+} 2>&1 | Tee-Object -FilePath "workshop-output/milestones/final/logs/${workshop_run_id}-backend.log"
+& { Push-Location issuetrackerweb; try { npm.cmd run build } finally { Pop-Location } } 2>&1 | Tee-Object -FilePath "workshop-output/milestones/final/logs/${workshop_run_id}-build.log"
+& { Push-Location issuetrackerweb; try { npm.cmd run test:e2e } finally { Pop-Location } } 2>&1 | Tee-Object -FilePath "workshop-output/milestones/final/logs/${workshop_run_id}-browser.log"
 ```
 
 `pipefail` preserves a failed command when using tee. Never write “passed” just
@@ -49,7 +62,7 @@ trace if a test fails; a successful bundle does not prove the UI works.
 **Claude guided exercise:**
 
 ```text
-/workshop-verify final workshop-output/milestones/final/plan.md Compare the completed tracker with SOFTWARE_SPECIFICATIONS.md. Read the actual backend/build/browser logs in workshop-output/milestones/final/logs, inspect missing coverage, run required checks if stale, and record pass/fail/not-run per acceptance criterion. Do not claim live browser behavior from source inspection alone.
+Verify milestone final against the accepted plan in workshop-output/milestones/final/plan.md using direct commands and the SQLite test environment. Compare the completed tracker with SOFTWARE_SPECIFICATIONS.md. Read the actual backend/build/browser logs in workshop-output/milestones/final/logs, inspect missing coverage, run required checks if stale, and record pass/fail/not-run per acceptance criterion. Do not claim live browser behavior from source inspection alone.
 ```
 
 **Independent:** introduce a reversible defect in a branch (for example, omit
@@ -73,7 +86,7 @@ checker cannot prove category integrity. Keep the hook fast and deterministic.
 ## 3. Independent review and task supervision
 
 ```text
-Use workshop-reviewer to review SOFTWARE_SPECIFICATIONS.md against the completed
+Use acceptance-reviewer to review SOFTWARE_SPECIFICATIONS.md against the completed
 application and workshop-output/milestones/final/logs/*.log. Supply the exact source paths and
 accepted plan. Ask for unmet criteria, missing evidence and risks, without edits.
 Main session: save its report to workshop-output/milestones/final/review.md, classify each
@@ -88,7 +101,7 @@ Record the code revision alongside future logs to make this check objective.
 ## 4. Repeatable delivery
 
 The root `.github/workflows/workshop.yml` runs the instructor reference gates on
-Linux with PostgreSQL and Chromium. For student repositories, adapt paths to your
+Linux and Windows with SQLite and Chromium. For student repositories, adapt paths to your
 layout and keep the same separation of test database and browser fixture data.
 Never store Claude API keys in CI unless a separate, explicit AI job needs them;
 these deterministic checks do not call Claude.

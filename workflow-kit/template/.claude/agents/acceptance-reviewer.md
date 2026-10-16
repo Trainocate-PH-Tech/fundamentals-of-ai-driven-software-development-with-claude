@@ -1,5 +1,5 @@
 ---
-name: workshop-reviewer
+name: acceptance-reviewer
 description: Read-only review of a bounded plan or implementation against supplied acceptance criteria.
 tools: Read, Glob, Grep
 ---

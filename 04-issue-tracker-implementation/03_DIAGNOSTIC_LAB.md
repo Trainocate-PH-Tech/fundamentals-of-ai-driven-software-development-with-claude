@@ -16,9 +16,9 @@ Never alter the instructor solution. Run the assignment regression and retain ou
 
 ```text
 Read the failing assignment output and the active backend schema, handler and
-operation. Use workshop-investigator to inspect the hypothesis that omitted fields
+operation. Use bug-investigator to inspect the hypothesis that omitted fields
 became null. Give it exact paths and the log, with no edits or commands. Main session:
-reproduce using ./workshop test spec/tracker/test_assignment.py, compare hypotheses,
+reproduce using direct pytest for spec/tracker/test_assignment.py from issuetrackerapi with APP_ENV=test and DATABASE_URL=sqlite:///test.sqlite3, compare hypotheses,
 propose a minimal repair and wait for acceptance. After acceptance, repair without
 weakening tests, run assignment and issue regressions and save milestone evidence.
 ```

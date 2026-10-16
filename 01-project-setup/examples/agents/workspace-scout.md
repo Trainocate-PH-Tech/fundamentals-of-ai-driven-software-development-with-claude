@@ -1,5 +1,5 @@
 ---
-name: workspace-scout
+name: architecture-reviewer
 description: Inspect Issue Tracker workspace structure and trace existing code without modifying files when explicitly requested.
 tools: Read, Grep, Glob
 model: inherit

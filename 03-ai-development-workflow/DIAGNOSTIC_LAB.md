@@ -33,6 +33,6 @@ return findings; the main session saves files, runs commands and owns repairs.
 
 ## Independent task
 
-Give workshop-investigator only a symptom without a log; evaluate whether it separates hypotheses from confirmed causes.
+Give bug-investigator only a symptom without a log; evaluate whether it separates hypotheses from confirmed causes.
 
 Debrief: what evidence ruled out a plausible cause, and which change was unnecessary?

@@ -1,6 +1,6 @@
 # Set up Claude Code in the terminal
 
-For the full application toolchain and shell-specific exercises, follow [Windows setup](WINDOWS_SETUP.md). Claude installation alone does not install Python, Node, Git, or Docker.
+For the full application toolchain and shell-specific exercises, follow [Windows setup](WINDOWS_SETUP.md). Claude installation alone does not install Python, Node, or Git.
 
 [Workshop home](README.md) · [Project setup](01-project-setup/README.md) · [VS Code guide](CLAUDE_CODE_VSCODE_SETUP.md)
 
@@ -104,7 +104,7 @@ Restart Claude Code after changing authentication. If you previously saved the v
 Change into your local workshop directory, replacing the example path:
 
 ```text
-cd path/to/fundamentals-of-ai-driven-software-development-with-claude
+cd path/to/issue-tracker-manual
 claude
 ```
 
