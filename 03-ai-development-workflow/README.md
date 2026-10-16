@@ -73,6 +73,8 @@ confirmation behavior. Run it before and after the issue form exists. Include a
 negative case (missing error handling) and evaluate whether it finds the defect.
 Use generic instructions and a project profile so the procedure transfers.
 
+**Optional extension:** [Skills fundamentals](../SKILLS_FUNDAMENTALS.md) walks through attaching a skill to a subagent and testing whether its instructions are followed.
+
 ## 3. Subagent delegation with explicit inputs
 
 Module 1 creates architecture-reviewer and acceptance-reviewer by writing their
