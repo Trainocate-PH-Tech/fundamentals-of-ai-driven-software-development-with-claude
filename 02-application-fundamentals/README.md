@@ -59,7 +59,7 @@ scope. If it cannot find an input, stop and supply the correct path. Do not trea
 another agent's answer as independent execution evidence.
 
 **Independent:** ask a fresh review of only the frontend map. Give a narrow task
-and compare token/context usage with the broad review using `/context` and `/cost`
+and compare token/context usage with the broad review using `/context` and `/usage`
 where available. Record usefulness and missing evidence, not just elapsed time.
 
 **Exit gate:** the map names real paths, distinguishes admin users from assignees,

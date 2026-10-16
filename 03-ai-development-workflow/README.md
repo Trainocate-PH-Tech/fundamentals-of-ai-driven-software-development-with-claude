@@ -114,6 +114,14 @@ inspects source rather than trusting stale notes. **Independent:** resume the
 category plan in a new session and identify one stale assumption deliberately
 inserted in a copy of the handoff.
 
+## 5. Efficient token usage
+
+Complete the [token-efficiency lab](04_TOKEN_EFFICIENCY.md): inspect context/usage,
+compare broad and targeted read-only prompts, keep logs outside the conversation,
+write a concise handoff and evaluate whether a subagent adds useful independent
+work. Preserve acceptance criteria and required tests. Record measurements rather
+than claiming savings from shorter answers alone.
+
 **Exit gate:** accepted plan, reviewer report, a custom skill tested before/after,
 and a usable handoff. Next: [Module 4](../04-issue-tracker-implementation/README.md).
 

@@ -539,6 +539,29 @@ next bounded task; report stale assumptions before making changes.
 that another session can use. Optional packaging/worktree exercises are in
 [Module 3 extensions](03-ai-development-workflow/03_FEATURE_LABS.md).
 
+### Token-efficiency demonstration — 20–30 minutes
+
+Use the [canonical token-efficiency lab](03-ai-development-workflow/04_TOKEN_EFFICIENCY.md)
+after students understand skills and handoffs. Instructor says: “We want verified
+progress per session. Removing requirements or skipping tests can make a short
+interaction more expensive to repair.”
+
+1. Show `/context` and `/usage` where supported; distinguish context occupancy from
+   accumulated usage and billing. Avoid projecting private account information.
+2. Compare the lab's broad and targeted assignment prompts on the same source/model.
+   Use read-only sessions; no deliberate unrestricted repository scan is needed.
+3. Inspect file reads, evidence quality, corrections and actual usage differences.
+4. Demonstrate saving a concise milestone handoff before compaction or a fresh session.
+5. Discuss why a subagent may reduce main-session clutter while adding total usage.
+6. Assign the frontend diagnosis variation and collect the lab's evidence table.
+
+The lab contains the exact prompts. Do not announce a fixed savings percentage;
+record cache/model/account differences and unavailable measurements. This is an
+optional measured comparison, not permission to alter billing or model settings.
+Assessment: the answer stays correct, scope is justified and required verification
+is retained. The classroom comparison has not been executed merely by adding these
+instructions to the guide.
+
 ## 6. Module 4: build verified increments
 
 Use the following cycle for each increment. Instructor: demonstrate one bounded

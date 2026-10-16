@@ -129,3 +129,12 @@ Save a handoff under this milestone so a fresh session can continue.
 
 Start the next session with that handoff and plan, then ask it to verify source state
 before proceeding. If task input is incomplete, a clarification is the correct result.
+
+## Recipe: efficient token usage
+
+Use the [Module 3 token-efficiency lab](03-ai-development-workflow/04_TOKEN_EFFICIENCY.md)
+for copy-paste prompts and a measured comparison. Start with the smallest relevant
+question and source paths; expand when evidence requires it. Save full logs and
+return concise results. Before changing tasks, preserve a milestone handoff.
+Measure usefulness and required corrections alongside usage; keep all verification
+gates. Delegating the same work repeatedly is not an efficiency strategy.
