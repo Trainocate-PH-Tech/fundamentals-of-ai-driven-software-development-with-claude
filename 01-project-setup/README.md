@@ -1,6 +1,8 @@
 # Module 1 — Establish a reproducible workspace
 
-**Entry:** Bash, Git, Python 3.14, Node 24 and a working Docker daemon.
+Windows users: complete [Windows setup](../WINDOWS_SETUP.md) first. Choose either the Bash or PowerShell block for each step, not both. Run terminal commands from the course root unless stated otherwise. Inline `./workshop` commands use `py -3.14 -m tools.workshop` in PowerShell; Claude slash commands and prompts are identical.
+
+**Entry:** Bash or PowerShell 7.4+, Git, Python 3.14, Node 24 and a working Docker daemon.
 **Result:** two pinned application repos, PostgreSQL, explicit AI instructions.
 Start at the course root (the directory containing `workshop`). Install Claude using
 [terminal setup](../CLAUDE_CODE_TERMINAL.md) or [VS Code setup](../CLAUDE_CODE_VSCODE_SETUP.md).
@@ -15,6 +17,18 @@ pwd
 ./workshop db migrate
 ./workshop install-kit
 mkdir -p workshop-output/milestones/setup workshop-output/milestones/exploration workshop-output/milestones/01-data
+```
+
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+Get-Location
+py -3.14 -m tools.workshop doctor
+py -3.14 -m tools.workshop setup
+py -3.14 -m tools.workshop db up
+py -3.14 -m tools.workshop db migrate
+py -3.14 -m tools.workshop install-kit
+New-Item -ItemType Directory -Force -Path 'workshop-output/milestones/setup', 'workshop-output/milestones/exploration', 'workshop-output/milestones/01-data' | Out-Null
 ```
 
 Expected: Python 3.14 and Node 24, both PostgreSQL containers healthy, migration
@@ -37,12 +51,33 @@ git -C issuetrackerweb status --short
 ./workshop build
 ```
 
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+Get-Content CLAUDE.md
+Get-Content workflow/project.md
+git -C issuetrackerapi status --short
+git -C issuetrackerweb status --short
+py -3.14 -m tools.workshop test
+py -3.14 -m tools.workshop build
+```
+
 Expected: baseline tests/build pass. The changes already visible in Git are the
 workshop's documented compatibility fixes, not student feature work. Review them,
 then create a baseline commit separately in each repository. If Git identity is
 missing, configure your own name/email before committing.
 
 ```bash
+git -C issuetrackerapi add .
+git -C issuetrackerapi commit -m "Establish tested workshop baseline"
+git -C issuetrackerweb add .
+git -C issuetrackerweb commit -m "Establish tested workshop baseline"
+claude
+```
+
+**PowerShell 7.4+ (Windows):**
+
+```powershell
 git -C issuetrackerapi add .
 git -C issuetrackerapi commit -m "Establish tested workshop baseline"
 git -C issuetrackerweb add .

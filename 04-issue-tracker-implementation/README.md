@@ -1,5 +1,7 @@
 # Module 4 — Implement bounded, verified changes
 
+Windows users: complete [Windows setup](../WINDOWS_SETUP.md) first. Choose either the Bash or PowerShell block for each step, not both. Run terminal commands from the course root unless stated otherwise. Inline `./workshop` commands use `py -3.14 -m tools.workshop` in PowerShell; Claude slash commands and prompts are identical.
+
 **Entry:** verified application map and accepted data plan. **Result:** complete
 Issue Tracker. Use the [specification](../SOFTWARE_SPECIFICATIONS.md) and
 [workflow recipes](../CLAUDE_USE_CASES.md). Read each app's AGENTS.md. Student apps
@@ -41,6 +43,15 @@ Accept/save to `workshop-output/milestones/01-data/plan.md`, then:
 ./workshop test
 ```
 
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+py -3.14 -m tools.workshop db migrate
+py -3.14 -m tools.workshop db seed
+py -3.14 -m tools.workshop db seed
+py -3.14 -m tools.workshop test
+```
+
 Expected: existing users preserved; repeated category seed does not duplicate the
 four sample categories. The local demo seed updates `admin@example.com` / `password`;
 never target a real deployment. Independent: prove database uniqueness and user
@@ -69,6 +80,12 @@ Accept/save to `workshop-output/milestones/02-categories/plan.md`, then:
 
 ```bash
 ./workshop test spec/tracker/test_categories.py
+```
+
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+py -3.14 -m tools.workshop test spec/tracker/test_categories.py
 ```
 
 Expected: 201 create, 409 duplicate/protected deletion, 422 invalid input, 404 missing,
@@ -100,6 +117,12 @@ Accept/save to `workshop-output/milestones/03-issues/plan.md`, then:
 ./workshop test spec/tracker/test_issues.py
 ```
 
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+py -3.14 -m tools.workshop test spec/tracker/test_issues.py
+```
+
 Independent: boundary lengths, whitespace-only title and unauthenticated writes.
 Recovery checkpoint: `03-issues`.
 
@@ -128,6 +151,12 @@ Accept/save to `workshop-output/milestones/04-assignment/plan.md`, then:
 ./workshop test spec/tracker/test_assignment.py
 ```
 
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+py -3.14 -m tools.workshop test spec/tracker/test_assignment.py
+```
+
 Independent: verify ordinary-user assignee access without exposing /users or sensitive
 fields. Complete the [assignment diagnosis](03_DIAGNOSTIC_LAB.md). Recovery: `04-assignment`.
 
@@ -154,6 +183,12 @@ Accept/save to `workshop-output/milestones/05-filters/plan.md`, then:
 
 ```bash
 ./workshop test spec/tracker/test_filters.py
+```
+
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+py -3.14 -m tools.workshop test spec/tracker/test_filters.py
 ```
 
 Independent: equal-timestamp paging without repetition or omission. Recovery: `05-filters`.
@@ -268,20 +303,46 @@ Run **Bash** after implementation:
 (cd issuetrackerweb && npx playwright install chromium)
 ```
 
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+py -3.14 -m tools.workshop build
+Push-Location issuetrackerweb
+try { npx.cmd playwright install chromium } finally { Pop-Location }
+```
+
 Start API and web in separate root terminals and keep them running:
 
 ```bash
 ./workshop start api
 ```
 
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+py -3.14 -m tools.workshop start api
+```
+
 ```bash
 ./workshop start web
+```
+
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+py -3.14 -m tools.workshop start web
 ```
 
 In a third terminal:
 
 ```bash
 ./workshop e2e
+```
+
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+py -3.14 -m tools.workshop e2e
 ```
 
 Use `http://localhost:8000/#/login` with the local demo account. Each increment adds

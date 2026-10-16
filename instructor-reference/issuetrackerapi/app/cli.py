@@ -86,14 +86,21 @@ def _run_command(command, env=None):
             return 130
         return return_code
 
-    process = subprocess.Popen(
-        command,
-        env=env,
-        start_new_session=True,
-    )
+    windows = sys.platform == "win32"
+    options = {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP} if windows else {"start_new_session": True}
+    process = subprocess.Popen(command, env=env, **options)
     try:
         return _normalize_return_code(process.wait())
     except KeyboardInterrupt:
+        if windows:
+            try:
+                process.send_signal(signal.CTRL_BREAK_EVENT)
+                process.wait(timeout=5)
+            except (OSError, subprocess.TimeoutExpired):
+                subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                process.wait()
+            return 130
         try:
             os.killpg(process.pid, signal.SIGINT)
         except ProcessLookupError:

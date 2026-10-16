@@ -16,6 +16,12 @@ From the workshop root, run:
 python3 05-testing-debugging-and-demo/examples/hooks/test_check_python_syntax.py
 ```
 
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+py -3.14 05-testing-debugging-and-demo/examples/hooks/test_check_python_syntax.py
+```
+
 On native Windows, use the installed `python` executable instead of `python3` if appropriate. The script uses only the standard library. Fixtures are created in a temporary directory and cleaned up. Verify the tests actually ran; record a skipped symlink case as skipped.
 
 ## 2. Install without replacing existing settings
@@ -26,14 +32,16 @@ On native Windows, use the installed `python` executable instead of `python3` if
    mkdir -p .claude/hooks
    cp -n 05-testing-debugging-and-demo/examples/hooks/check_python_syntax.py .claude/hooks/check_python_syntax.py
    ```
+
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+New-Item -ItemType Directory -Force -Path '.claude/hooks' | Out-Null
+if (-not (Test-Path .claude/hooks/check_python_syntax.py)) { Copy-Item 05-testing-debugging-and-demo/examples/hooks/check_python_syntax.py .claude/hooks/check_python_syntax.py }
+   
+```
 2. Open root `.claude/settings.local.json`, creating it if absent. Merge the fragment's `PostToolUse` entry into existing hooks; preserve all other events and permissions. Do not copy the example tests into active hook configuration.
-3. The supplied command is for macOS/Linux/WSL with `python3`. For native Windows PowerShell, replace its `command` value with:
-
-   ```json
-   "powershell -NoProfile -Command \"python (Join-Path $env:CLAUDE_PROJECT_DIR '.claude/hooks/check_python_syntax.py')\""
-   ```
-
-   Confirm that `python` resolves to Python 3.9+ in that environment. If using an absolute interpreter path, quote it correctly for the chosen shell; do not assume a backend virtual environment is activated in the hook process.
+3. The supplied fragment is for Linux/WSL with `python3`. On native Windows with the course's Git for Windows installation, hooks run in Git Bash. Use [settings.windows.fragment.json](examples/hooks/settings.windows.fragment.json), whose command invokes `py -3.14` and quotes `$CLAUDE_PROJECT_DIR` for paths with spaces. Merge its event into local settings rather than replacing existing settings. Verify `py -3.14 --version` in Git Bash before enabling it. If you configure a different hook shell, adapt and test the command for that shell explicitly.
 4. Restart the session at the workshop root and inspect `/hooks` for the matcher and command. Resolve any configuration/organization restriction before continuing.
 
 `PostToolUse` runs after a successful tool action; the script returns `additionalContext` feedback. An `Edit|Write` matcher does not see shell-based rewrites. It cannot reverse an edit. See [official hook input and output documentation](https://code.claude.com/docs/en/hooks).

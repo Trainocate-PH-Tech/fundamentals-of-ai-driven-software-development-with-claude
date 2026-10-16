@@ -1,5 +1,7 @@
 # Recovery without losing work
 
+See [Windows setup](../WINDOWS_SETUP.md). In PowerShell, inline `./workshop` commands use `py -3.14 -m tools.workshop`; run from the course root.
+
 Each numbered directory contains **cumulative** patches against the pinned upstream
 commits, not against the preceding checkpoint. Never apply successive patches to
 an existing working tree. The runner clones upstream at the exact commits and
@@ -25,6 +27,18 @@ Example from course root (choose a new destination if it already exists):
 ./workshop --workspace recovery/completed db seed
 ./workshop --workspace recovery/completed test
 ./workshop --workspace recovery/completed build
+```
+
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+py -3.14 -m tools.workshop recover 06-frontend recovery/completed
+py -3.14 -m tools.workshop --workspace recovery/completed setup
+py -3.14 -m tools.workshop --workspace recovery/completed db up
+py -3.14 -m tools.workshop --workspace recovery/completed db migrate
+py -3.14 -m tools.workshop --workspace recovery/completed db seed
+py -3.14 -m tools.workshop --workspace recovery/completed test
+py -3.14 -m tools.workshop --workspace recovery/completed build
 ```
 
 Recovered workspaces use the **student** ports; stop student servers/databases before

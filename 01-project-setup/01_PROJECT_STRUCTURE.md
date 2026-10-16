@@ -66,6 +66,13 @@ mkdir -p workshop-output/permission-fixture
 printf 'WORKSHOP_DUMMY=not-a-secret\n' > workshop-output/permission-fixture/.env
 ```
 
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+New-Item -ItemType Directory -Force -Path 'workshop-output/permission-fixture' | Out-Null
+'WORKSHOP_DUMMY=not-a-secret' | Set-Content -Encoding utf8 workshop-output/permission-fixture/.env
+```
+
 Inside Claude:
 
 ```text

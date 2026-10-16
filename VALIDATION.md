@@ -88,3 +88,72 @@ model compliance. Full live implementation/verification skill execution, the del
 failed-delegation student exercise, VS Code, permissions fixture activation, plugins
 and live hooks were not rerun. The older “not exercised” statements above describe
 the initial validation; only the specific delegated probes listed here were added.
+
+## Windows compatibility implementation — 2026-10-16
+
+Added native PowerShell instructions alongside Bash, `WINDOWS_SETUP.md`, portable
+launcher/virtual-environment handling, Windows process-group cleanup, platform
+markers and pinned Windows dependencies, byte-preserved checkpoint patches,
+PowerShell-aware documentation checks, and a Windows tooling CI job. Instructor
+reference and all cumulative API checkpoints include the compatibility changes.
+Existing application behavior and milestone contracts are unchanged.
+
+Executed in this Linux workspace (Python 3.14.3, Node 24.13.0):
+
+| Check | Result |
+|---|---|
+| Updated launcher doctor | Passed: Python/Node versions, Git, Compose, connected Linux engine |
+| Reference PostgreSQL start, migration and seed | Passed |
+| Full reference backend suite | Passed; 129 collected, 22 upstream/platform skips |
+| Reference frontend build | Passed; existing Sass warnings remain |
+| Reference Chromium acceptance | 2 passed; logs in `workshop-output/windows-compatibility/browser.log` |
+| Tooling unit tests | 8 passed, including paths with spaces, environment preservation, child exit codes, and simulated Windows interruption |
+| New API process tests | 2 passed; Windows signal branch is mocked on Linux, not a native Windows execution |
+| Hook fixture tests | 9 passed |
+| Cumulative checkpoint application | All 14 patches independently apply after the final Windows lock updates |
+| Course-relative links and Bash syntax | 38 documents; links resolve, 61 Bash fences parse |
+| CI configuration / Windows hook configuration | YAML and JSON parsed; project profile matches reusable template |
+
+PowerShell parsing was **not run locally** because `pwsh` is unavailable. A portable
+PowerShell download was attempted and stopped before completion; it established no
+additional validation. Windows CI requires both shell parsers rather than silently
+skipping one. The CI job has been authored but has **not been run on GitHub**.
+
+The new Windows dependency pins (`colorama` and `tzdata`) were selected from PyPI
+metadata and are conditional on Windows; they were not installed on Windows here.
+Windows dependency installation, Docker Desktop, real Ctrl+C behavior, full native
+backend/browser acceptance, and live Claude/VS Code/hook exercises remain unverified.
+Complete the Windows rehearsal checklist in `WINDOWS_SETUP.md` before describing
+native Windows or WSL2 as classroom-tested. Linux checks do not substitute for it.
+Reference servers and the database containers started for this check were stopped.
+
+## Manual guide track — 2026-10-16
+
+GUIDE.md now includes a separate manual workspace, folder diagram, exact root
+instruction/permission files, Compose configuration, direct commands, and two
+custom subagent definitions with ordinary Claude invocation/review prompts.
+No launcher or kit installer is required by that track. It explicitly applies
+00-baseline source patches to the pinned templates; it does not claim raw upstream
+or a completed capstone is equivalent to that starting point.
+
+A fresh baseline was rehearsed on Linux in `.workshop/manual-route-check` using
+direct Git, Python, pip, npm and Docker commands (no workshop launcher). To avoid
+another network clone, Git used the local upstream object cache and checked out
+the documented commits. The Compose project name was `manual-route-validation`
+for isolation; its services/configuration were taken from the guide. Outcomes:
+
+- Both baseline patches applied after `git apply --check`.
+- Fresh Python virtual environment, locked pip install and `npm ci` succeeded.
+- Both PostgreSQL services became healthy; direct Alembic migration and existing
+  admin seeding succeeded.
+- Baseline backend: **84 passed, 22 skipped**, with existing warnings.
+- Direct frontend production build succeeded, with existing Sass warnings.
+- Direct Uvicorn and npm development servers returned HTTP 200 for API `/health`,
+  API `/docs`, and frontend `/`.
+- Servers and database containers were stopped after verification.
+
+Logs are under `workshop-output/manual-route-check/`. Link/syntax checks passed
+for 38 course documents and 76 Bash fences. PowerShell parsing remains unavailable
+locally. The new subagent prompts, Windows manual route, VS Code interactions, and
+student-authored final browser tests were not executed in this rehearsal. Startup
+HTTP checks do not establish the completed Issue Tracker's browser acceptance.

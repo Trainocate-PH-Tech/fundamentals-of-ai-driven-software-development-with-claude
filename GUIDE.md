@@ -1,9 +1,13 @@
 # Instructor guide: delivering the Claude Code engineering workshop
 
+Windows users: complete [Windows setup](WINDOWS_SETUP.md) first. Choose either the Bash or PowerShell block for each step, not both. Run terminal commands from the course root unless stated otherwise. Inline `./workshop` commands use `py -3.14 -m tools.workshop` in PowerShell; Claude slash commands and prompts are identical.
+
 This is the facilitator's companion to the [student course](README.md). It explains
 what to prepare, demonstrate, say, ask students to do, and verify. Students follow
 the five module READMEs; use this guide to orchestrate those lessons rather than
-introducing a competing sequence.
+introducing a competing sequence. For delivery without the provided tooling, use
+the [manual track](#manual-track-build-and-operate-the-workspace-without-workshop-tools):
+it supplies the folder layout, direct commands, and plain Claude/subagent prompts.
 
 The outcome is a working Issue Tracker backed by PostgreSQL, with a FastAPI API,
 React interface, automated checks, and a reusable Claude Code engineering workflow.
@@ -14,6 +18,7 @@ limits; rerun the relevant checks before your own delivery.
 ## Contents
 
 1. [Delivery approach and preparation](#1-delivery-approach-and-preparation)
+   - [Manual track: setup, direct commands, and your own subagents](#manual-track-build-and-operate-the-workspace-without-workshop-tools)
 2. [Instructor rehearsal and opening demonstration](#2-instructor-rehearsal-and-opening-demonstration)
 3. [Module 1: project setup and trustworthy context](#3-module-1-project-setup-and-trustworthy-context)
 4. [Module 2: understand the application](#4-module-2-understand-the-application)
@@ -35,10 +40,10 @@ For learners unfamiliar with Git, Python environments, React, or relational
 constraints, schedule a prerequisite lab. Do not spend the implementation sessions
 trying to install missing system software on every machine.
 
-Primary delivery environment: Bash on Linux or WSL2, Python 3.14, Node 24, Git,
+Delivery environments: Bash on Linux/WSL2 or PowerShell 7.4+ on Windows, Python 3.14, Node 24, Git,
 Docker with Compose, and a browser. Claude Code requires the learner's supported
-account or API billing. macOS requires its own rehearsal; native PowerShell is not
-the course's tested application-command path.
+account or API billing. Windows and macOS require their own full classroom
+rehearsals; consult VALIDATION.md for executed checks and remaining platform gates.
 
 Send these materials before class:
 
@@ -110,6 +115,694 @@ The reference can coexist with student work. A recovered workspace conflicts wit
 the student's host ports even though it has a separate Compose project and volume.
 Always use the same workspace selector throughout a demonstration.
 
+## Manual track: build and operate the workspace without workshop tools
+
+Use this track when students should see and execute every underlying command.
+It replaces the launcher-based setup and verification steps; it does not change the
+five modules' learning objectives or the software specification. Do not run both
+setup tracks against the same directories. No `workshop`, `tools/`, kit installer,
+or `/workshop-*` skill is needed in the new workspace. Claude receives ordinary
+prompts, and students create and invoke their own subagents.
+
+**Starting point:** the course repository is downloaded, Python 3.14, Node 24,
+Git, Docker Compose and Claude are installed, and Docker runs Linux containers.
+Use [Windows setup](WINDOWS_SETUP.md) for prerequisites and
+[terminal authentication](CLAUDE_CODE_TERMINAL.md) for sign-in. API credentials
+belong to Claude's environment, not either application's environment files.
+
+Every terminal block names its working directory. Stop on a failed command; do
+not paste the entire chapter as one script. In each new PowerShell terminal set
+`$ErrorActionPreference = 'Stop'` and
+`$PSNativeCommandUseErrorActionPreference = $true` before multi-command blocks.
+
+### M1. Folder diagram and ownership
+
+Create a **new sibling directory**, `issue-tracker-manual`, beside the course.
+Start Claude at that new root so it can see both apps and the shared instructions.
+This tree shows the desired layout after setup; `(later)` entries are built during
+Modules 3–5, not supplied by the baseline.
+
+```text
+projects/
+├── fundamentals-of-ai-driven-software-development-with-claude/  # course reference
+│   ├── GUIDE.md
+│   ├── SOFTWARE_SPECIFICATIONS.md
+│   └── checkpoints/00-baseline/                               # reviewed compatibility patches
+└── issue-tracker-manual/                                      # open this folder in VS Code
+    ├── AGENTS.md                                             # shared engineering rules
+    ├── CLAUDE.md                                             # imports AGENTS.md for Claude
+    ├── SOFTWARE_SPECIFICATIONS.md                            # copied behavior contract
+    ├── .gitignore
+    ├── compose.yml                                           # dev/test PostgreSQL only
+    ├── .claude/
+    │   ├── settings.json                                     # secret-file permissions
+    │   └── agents/
+    │       ├── architecture-reviewer.md
+    │       └── acceptance-reviewer.md
+    ├── workshop-output/                                      # local evidence, ignored by Git
+    │   └── milestones/
+    │       ├── setup/
+    │       ├── exploration/
+    │       └── 01-data/                                      # more milestone folders later
+    ├── issuetrackerapi/                                      # independent Git repository
+    │   ├── .git/
+    │   ├── AGENTS.md                                         # preserve template instructions
+    │   ├── .env                                              # local, never committed
+    │   ├── .venv/                                            # generated for this OS
+    │   ├── requirements.lock.txt
+    │   ├── app/{models,schemas,controllers,operations}/
+    │   ├── alembic/versions/
+    │   └── spec/                                             # tracker tests added later
+    └── issuetrackerweb/                                      # independent Git repository
+        ├── .git/
+        ├── AGENTS.md                                         # preserve template instructions
+        ├── .env                                              # local build configuration
+        ├── package.json
+        ├── package-lock.json
+        ├── node_modules/                                    # generated, never committed
+        ├── src/js/{services,commons}/
+        ├── playwright.config.js                             # later
+        └── e2e/                                             # later
+```
+
+`AGENTS.md` is shared guidance for tools that read it. Claude loads `CLAUDE.md`,
+which explicitly imports that shared file; do not assume it discovers AGENTS.md
+automatically. Nested application instructions still apply when editing those
+apps. Instructions guide behavior; permissions and tests provide separate checks.
+See [Claude memory/imports](https://code.claude.com/docs/en/memory).
+
+### M2. Clone the pinned templates explicitly
+
+**Working directory: the existing course root.** The destination must not exist.
+These commands keep the course path available only for copying the specification
+and applying the baseline compatibility files.
+
+```bash
+course_source=$(pwd)
+manual_root="$(dirname "$course_source")/issue-tracker-manual"
+if [ -e "$manual_root" ]; then
+  echo 'Choose a new destination; existing work must be preserved.'
+else
+  mkdir "$manual_root"
+fi
+```
+
+```powershell
+$ErrorActionPreference = 'Stop'
+$PSNativeCommandUseErrorActionPreference = $true
+$course_source = (Get-Location).Path
+$manual_root = Join-Path (Split-Path $course_source -Parent) 'issue-tracker-manual'
+if (Test-Path $manual_root) { throw 'Choose a new destination; existing work must be preserved.' }
+New-Item -ItemType Directory -Path $manual_root | Out-Null
+```
+
+If the destination existed, stop and choose a different name before continuing.
+**Working directory changes to the new manual root:**
+
+```bash
+cd "$manual_root"
+cp "$course_source/SOFTWARE_SPECIFICATIONS.md" SOFTWARE_SPECIFICATIONS.md
+git clone --config core.autocrlf=false https://github.com/cloudband-solutions/default_api_fast.git issuetrackerapi
+git -C issuetrackerapi checkout -b workshop/manual 6afada28350e93d5a2cdff7dddcbe88c2036e299
+git clone --config core.autocrlf=false https://github.com/cloudband-solutions/admin-panel-web.git issuetrackerweb
+git -C issuetrackerweb checkout -b workshop/manual 47578e05f4cca5c035ea51c0b5e92b55d0818928
+```
+
+```powershell
+Set-Location $manual_root
+Copy-Item (Join-Path $course_source 'SOFTWARE_SPECIFICATIONS.md') SOFTWARE_SPECIFICATIONS.md
+git clone --config core.autocrlf=false https://github.com/cloudband-solutions/default_api_fast.git issuetrackerapi
+git -C issuetrackerapi checkout -b workshop/manual 6afada28350e93d5a2cdff7dddcbe88c2036e299
+git clone --config core.autocrlf=false https://github.com/cloudband-solutions/admin-panel-web.git issuetrackerweb
+git -C issuetrackerweb checkout -b workshop/manual 47578e05f4cca5c035ea51c0b5e92b55d0818928
+```
+
+**Why use patches in a manual track?** These are visible source changes, not an
+execution wrapper or completed capstone. The pinned upstream templates need the
+course's lockfiles, platform fixes, PostgreSQL test safety, and frontend baseline
+fixes. Inspect/apply **only `00-baseline`**, not the final solution. Omitting the
+patches creates a different, unverified starting point. This track removes tooling
+dependence; it still uses the course's reviewed starting source.
+
+```bash
+git -C issuetrackerapi apply --stat "$course_source/checkpoints/00-baseline/issuetrackerapi.patch"
+git -C issuetrackerapi apply --check "$course_source/checkpoints/00-baseline/issuetrackerapi.patch"
+git -C issuetrackerapi apply "$course_source/checkpoints/00-baseline/issuetrackerapi.patch"
+git -C issuetrackerweb apply --stat "$course_source/checkpoints/00-baseline/issuetrackerweb.patch"
+git -C issuetrackerweb apply --check "$course_source/checkpoints/00-baseline/issuetrackerweb.patch"
+git -C issuetrackerweb apply "$course_source/checkpoints/00-baseline/issuetrackerweb.patch"
+mkdir -p .claude/agents workshop-output/milestones/setup workshop-output/milestones/exploration workshop-output/milestones/01-data
+```
+
+```powershell
+git -C issuetrackerapi apply --stat "$course_source/checkpoints/00-baseline/issuetrackerapi.patch"
+git -C issuetrackerapi apply --check "$course_source/checkpoints/00-baseline/issuetrackerapi.patch"
+git -C issuetrackerapi apply "$course_source/checkpoints/00-baseline/issuetrackerapi.patch"
+git -C issuetrackerweb apply --stat "$course_source/checkpoints/00-baseline/issuetrackerweb.patch"
+git -C issuetrackerweb apply --check "$course_source/checkpoints/00-baseline/issuetrackerweb.patch"
+git -C issuetrackerweb apply "$course_source/checkpoints/00-baseline/issuetrackerweb.patch"
+New-Item -ItemType Directory -Force -Path '.claude/agents', 'workshop-output/milestones/setup', 'workshop-output/milestones/exploration', 'workshop-output/milestones/01-data' | Out-Null
+```
+
+### M3. Write the root instructions yourself
+
+Create these files in the editor at the **manual root**, using the exact contents
+below. These blocks are file contents, not shell commands. Do not copy the course's
+CLAUDE.md unchanged: it references a profile and skills absent from this workspace.
+
+**`AGENTS.md`:**
+
+```markdown
+# Issue Tracker engineering rules
+
+Read SOFTWARE_SPECIFICATIONS.md before planning feature work.
+Inspect both apps' AGENTS.md files and follow their local conventions.
+Only Category and Issue are new domain models; reuse User and authentication.
+Explore, plan, implement a bounded change, then verify it.
+Preserve existing data, unrelated files, instructions, and Git checkpoints.
+Use direct Python, npm, Git and Docker commands from the correct app directory.
+Confirm OS and shell before selecting paths; never share .venv between OSes.
+Tests use issuetracker_test on port 54330, never the development database.
+Do not read, print, edit, or commit .env files or credentials through AI tools.
+Human operators configure environments. Report missing configuration without
+trying to read secret files or dumping environment variables.
+Reviewers return findings; the main session owns edits and test execution.
+Save plans, reports, evidence and handoffs under workshop-output/milestones/.
+Record actual commands, exit codes, revision and dirty state. Unrun means unverified.
+```
+
+**`CLAUDE.md`:**
+
+```markdown
+# Claude entry point
+
+@AGENTS.md
+
+Start here at the parent of issuetrackerapi and issuetrackerweb.
+Use SOFTWARE_SPECIFICATIONS.md as the behavior contract. Read each app's
+AGENTS.md before changing its files. No workshop launcher or custom skill is
+installed; use ordinary requests and direct commands.
+For uncertain work, plan first and wait for explicit acceptance before editing.
+Supply each subagent its task, paths, constraints and expected output.
+Do not treat reviewer findings as evidence that tests ran.
+```
+
+**`.claude/settings.json`:**
+
+```json
+{
+  "permissions": {
+    "deny": [
+      "Read(./**/.env)",
+      "Read(./**/.env.*)",
+      "Edit(./**/.env)",
+      "Edit(./**/.env.*)",
+      "Write(./**/.env)",
+      "Write(./**/.env.*)"
+    ]
+  }
+}
+```
+
+These tool permissions complement the instructions. They are not an OS sandbox
+and must not be treated as protection against every shell command; never authorize
+secret-printing commands. Give reviewers only read tools and no shell tool.
+
+**Root `.gitignore`:**
+
+```gitignore
+.env
+.env.*
+!.env.example
+.venv/
+node_modules/
+workshop-output/
+.claude/settings.local.json
+CLAUDE.local.md
+# Application repositories have their own history and commits.
+/issuetrackerapi/
+/issuetrackerweb/
+```
+
+Preserve each application's own `.gitignore`. The root ignore rules apply if you
+later initialize a parent repository; they do not prevent secrets being staged
+inside either app. Review `git -C <app> diff --cached` before committing.
+
+### M4. Create PostgreSQL infrastructure explicitly
+
+At the **manual root**, create `compose.yml` with this content:
+
+```yaml
+services:
+  dev:
+    image: postgres:17.6
+    environment:
+      POSTGRES_USER: workshop
+      POSTGRES_PASSWORD: workshop-local
+      POSTGRES_DB: issuetracker
+    ports:
+      - '127.0.0.1:54329:5432'
+    volumes:
+      - dev-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U workshop -d issuetracker']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  test:
+    image: postgres:17.6
+    environment:
+      POSTGRES_USER: workshop
+      POSTGRES_PASSWORD: workshop-local
+      POSTGRES_DB: issuetracker_test
+    ports:
+      - '127.0.0.1:54330:5432'
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U workshop -d issuetracker_test']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+volumes:
+  dev-data:
+```
+
+The fixed credentials are disposable local teaching credentials. Bindings are
+loopback-only. Never reuse them for a deployed database. Stop other student or
+recovery databases using these same ports before starting this stack.
+
+**Bash and PowerShell, manual root:**
+
+```bash
+docker compose -p issue-tracker-manual up -d --wait
+docker compose -p issue-tracker-manual ps
+```
+
+```powershell
+docker compose -p issue-tracker-manual up -d --wait
+docker compose -p issue-tracker-manual ps
+```
+
+Both services must show healthy. Keep this explicit Compose project name for
+subsequent commands. Development uses a persistent volume; test storage is disposable.
+
+### M5. Install dependencies and configure the applications
+
+**Working directory: manual root.** No virtual-environment activation is required.
+
+```bash
+python3 --version
+node --version
+python3 -m venv issuetrackerapi/.venv
+issuetrackerapi/.venv/bin/python -m pip install -r issuetrackerapi/requirements.lock.txt
+(cd issuetrackerweb && npm ci)
+```
+
+```powershell
+py -3.14 --version
+node --version
+py -3.14 -m venv issuetrackerapi/.venv
+& ./issuetrackerapi/.venv/Scripts/python.exe -m pip install -r issuetrackerapi/requirements.lock.txt
+Push-Location issuetrackerweb
+try { npm.cmd ci } finally { Pop-Location }
+```
+
+Stop if Python is not 3.14 or Node is not 24. On Linux/WSL, use `python3.14`
+instead of `python3` if needed. Do not replace the lock-based install with an
+unbounded requirements install.
+
+Create the backend `.env` with an exclusive-write command. It generates a random
+application signing secret without printing it and fails if the file already exists.
+**Working directory: manual root; run only your OS's block:**
+
+```bash
+issuetrackerapi/.venv/bin/python -c "import secrets; from pathlib import Path; p=Path('issuetrackerapi/.env'); f=p.open('x', encoding='utf-8'); f.write('APP_ENV=development\nDATABASE_URL=postgresql+psycopg://workshop:workshop-local@127.0.0.1:54329/issuetracker\nSECRET_KEY='+secrets.token_hex(32)+'\n'); f.close(); p.chmod(0o600)"
+```
+
+```powershell
+& ./issuetrackerapi/.venv/Scripts/python.exe -c "import secrets; from pathlib import Path; p=Path('issuetrackerapi/.env'); f=p.open('x', encoding='utf-8'); f.write('APP_ENV=development\nDATABASE_URL=postgresql+psycopg://workshop:workshop-local@127.0.0.1:54329/issuetracker\nSECRET_KEY='+secrets.token_hex(32)+'\n'); f.close()"
+```
+
+In your editor create **`issuetrackerweb/.env`**:
+
+```dotenv
+API_BASE_URL=http://localhost:3000
+API_VERSION=v1
+WEB_PORT=8000
+TOKEN_BEARER=ISSUE_TRACKER_TOKEN
+CURRENT_USER=ISSUE_TRACKER_USER
+```
+
+`TOKEN_BEARER` and `CURRENT_USER` are browser-storage key names, not credentials.
+`API_VERSION` is required by the build. These are build-time values: restart the
+frontend after changing them. Existing process environment variables override the
+backend dotenv values; use dedicated course terminals with the environment shown
+below, not a terminal previously targeting a different database.
+
+### M6. Migrate, seed the existing login, and start both servers
+
+**Terminal A: begin at manual root and enter the API directory.** Keep it there.
+
+```bash
+cd issuetrackerapi
+unset DATABASE_URL
+export APP_ENV=development
+.venv/bin/python -m alembic upgrade head
+.venv/bin/python -m app.cli system:seed
+.venv/bin/python -m uvicorn app:create_app --factory --host 127.0.0.1 --port 3000
+```
+
+```powershell
+Set-Location issuetrackerapi
+Remove-Item Env:DATABASE_URL -ErrorAction SilentlyContinue
+$env:APP_ENV = 'development'
+& ./.venv/Scripts/python.exe -m alembic upgrade head
+& ./.venv/Scripts/python.exe -m app.cli system:seed
+& ./.venv/Scripts/python.exe -m uvicorn app:create_app --factory --host 127.0.0.1 --port 3000
+```
+
+At baseline, migration head is `0002_add_role_to_users`. `system:seed` creates or
+updates the existing local admin (`admin@example.com` / `password`); rerunning it
+resets that demo login. **Do not run `app.seed_tracker` yet:** students create it
+in the data milestone. At that milestone, rerun Alembic then run
+`.venv/bin/python -m app.seed_tracker` (Windows:
+`& ./.venv/Scripts/python.exe -m app.seed_tracker`) twice to check idempotence.
+
+**Terminal B: new terminal at manual root; enter the frontend directory.**
+
+```bash
+cd issuetrackerweb
+npm start
+```
+
+```powershell
+Set-Location issuetrackerweb
+npm.cmd start
+```
+
+Open `http://localhost:3000/docs` and `http://localhost:8000/#/login`.
+Log in with the local demo account. The baseline has existing users/authentication;
+Category and Issue screens do not exist yet. Ctrl+C stops a foreground server.
+
+### M7. Verify the baseline directly and save a Git checkpoint
+
+**Terminal C: start at manual root.** Backend fixtures drop tables; explicitly
+select the separate test database. These blocks restore the caller's environment
+after testing. On PowerShell enable the failure preferences from M2 in each new
+terminal so a failed native command stops the block.
+
+```bash
+(
+  cd issuetrackerapi
+  export APP_ENV=test
+  export DATABASE_URL=postgresql+psycopg://workshop:workshop-local@127.0.0.1:54330/issuetracker_test
+  .venv/bin/python -m pytest spec
+)
+(cd issuetrackerweb && npm run build)
+```
+
+```powershell
+$ErrorActionPreference = 'Stop'
+$PSNativeCommandUseErrorActionPreference = $true
+$previous_app_env = $env:APP_ENV
+$previous_db_url = $env:DATABASE_URL
+Push-Location issuetrackerapi
+try {
+    $env:APP_ENV = 'test'
+    $env:DATABASE_URL = 'postgresql+psycopg://workshop:workshop-local@127.0.0.1:54330/issuetracker_test'
+    & ./.venv/Scripts/python.exe -m pytest spec
+} finally {
+    $env:APP_ENV = $previous_app_env
+    $env:DATABASE_URL = $previous_db_url
+    Pop-Location
+}
+Push-Location issuetrackerweb
+try { npm.cmd run build } finally { Pop-Location }
+```
+
+Inspect the result of **each** command; a successful build cannot erase a failed
+test result. Save actual outcomes to `workshop-output/milestones/setup/evidence.md`,
+including OS, shell, versions, commands, exit codes and skips. Do not claim the
+full application is implemented just because the baseline passes.
+
+Once both gates pass, run these Git commands from the manual root in either shell:
+
+```bash
+git -C issuetrackerapi status --short
+git -C issuetrackerweb status --short
+git -C issuetrackerapi add .
+git -C issuetrackerapi diff --cached --stat
+git -C issuetrackerapi diff --cached
+git -C issuetrackerweb add .
+git -C issuetrackerweb diff --cached --stat
+git -C issuetrackerweb diff --cached
+```
+
+Review staged content for credentials, generated files and unexpected changes.
+Only after that review, commit in each repository:
+
+```bash
+git -C issuetrackerapi commit -m "Establish manually verified workshop baseline"
+git -C issuetrackerweb commit -m "Establish manually verified workshop baseline"
+```
+
+These Git blocks are identical in PowerShell. Configure your own Git name/email
+if prompted. Keep the two application histories; parent-folder commits do not
+include them automatically.
+
+### M8. Create and invoke subagents yourself
+
+Create **`.claude/agents/architecture-reviewer.md`** in the manual root with:
+
+```markdown
+---
+name: architecture-reviewer
+description: Trace a bounded Issue Tracker request flow and check a supplied architecture map.
+tools: Read, Glob, Grep
+---
+Read AGENTS.md and the supplied specification, map and application instructions.
+Inspect only the requested source paths. Do not edit files or run commands.
+Trace authentication, controller, operation, persistence and frontend API use.
+Return facts with paths, uncertainties, contradictions and proposed checks.
+Do not infer that a target feature exists or that a test passed.
+If an input is absent, report it instead of widening the search to other projects.
+```
+
+Create **`.claude/agents/acceptance-reviewer.md`** with:
+
+```markdown
+---
+name: acceptance-reviewer
+description: Review one accepted Issue Tracker milestone against its contract and execution evidence.
+tools: Read, Glob, Grep
+---
+Read AGENTS.md, the supplied accepted plan, specification and evidence.
+Inspect the named application's AGENTS.md and only the supplied feature scope.
+Return a verdict, severity-ranked findings with paths, missing test cases,
+and unsupported completion claims. Do not edit files or execute commands.
+Distinguish source inspection from supplied execution evidence.
+Never report tests as passed because test code exists. If the plan or evidence
+is missing, return insufficient evidence and identify the missing input.
+```
+
+The files define the roles; no installer or Python wrapper registers them.
+Their tools permit source inspection but not edits or test execution. Start or
+restart Claude **at the manual root**, then use `/agents` or the installed client's
+help to inspect discovery. In newer clients `/agents` may provide instructions
+rather than an interactive wizard. See the
+[official subagent documentation](https://code.claude.com/docs/en/sub-agents).
+
+**Terminal, manual root (both shells):**
+
+```bash
+claude
+```
+
+**Inside Claude — validate context and delegate a real task:**
+
+```text
+Read CLAUDE.md, AGENTS.md, SOFTWARE_SPECIFICATIONS.md and both application AGENTS.md
+files. Do not read environment files. Report the active workspace and instruction
+sources. Then use the architecture-reviewer subagent to trace the existing login
+and users request flow in issuetrackerapi/app and issuetrackerweb/src/js. Supply
+it the specification and both app instruction files. Ask for path-backed findings
+on User identity, auth, request/response shapes and frontend token use. No edits
+or commands by the reviewer. Main session: save its returned report to
+workshop-output/milestones/exploration/architecture-review.md and label unverified
+claims explicitly. Do not implement Category or Issue yet.
+```
+
+A subagent is requested by name in an ordinary message; `/architecture-reviewer`
+is **not** a skill command. The CLI starts the parent session, and that session
+creates the delegated task. You do not launch a separate terminal process for
+each reviewer in this exercise.
+
+**Monitor it yourself:** expand the named delegation/tool row and inspect its
+inputs, tool calls, status and returned output. Confirm a real task was created;
+a main-session answer pretending to be the reviewer is not delegation evidence.
+Use `/tasks` if present in your client's `/help` for background work and its stop
+control when necessary. No task/output means “not run.” Stop a reviewer that
+requests writes or shell execution; inspect its definition and restart before
+retrying. The main session must save and assess the returned report.
+
+**Independent exercise:** create `frontend-state-reviewer.md` with the same
+read-only tools and a description focused on labelled controls, empty/loading/error
+states, filter reset and assignment clearing. Invoke it against an actual frontend
+plan. Demonstrate its task row, cite one source-backed finding, and explain one
+claim that still requires a browser test. Do not run extra agents solely to make
+the transcript look more sophisticated.
+
+### M9. Build each milestone using ordinary Claude requests
+
+Follow the same sequence as Module 4: data → categories → issues → assignment →
+filters → category UI → issue create/details → editing/assignment → filters/deletion.
+Create a new evidence directory for each step and preserve previous runs.
+
+**Inside Claude — planning example (use Plan Mode):**
+
+```text
+Plan milestone 01-data only. Read SOFTWARE_SPECIFICATIONS.md, both app instructions,
+and workshop-output/milestones/exploration/architecture-review.md. Inspect actual
+models, migrations and test fixtures. Propose Category and Issue models, migration,
+and an idempotent app.seed_tracker module. Reuse User and preserve existing data.
+Name files, acceptance criteria, tests and direct commands with working directories
+and OS-specific interpreter paths. Do not implement or invoke workshop tools/skills.
+Return the plan for my review.
+```
+
+After accepting the plan and leaving Plan Mode, have the main session save it to
+`workshop-output/milestones/01-data/plan.md`. Then send:
+
+```text
+I accept workshop-output/milestones/01-data/plan.md. Implement only that scope.
+Follow the backend's test-first instructions and use direct commands. Do not read
+or change .env files. Tests must use the separate issuetracker_test database.
+Record actual commands, exit codes, skips, changed files and remaining gaps in
+workshop-output/milestones/01-data/evidence.md. Do not claim success without execution.
+```
+
+**After direct verification, request an independent review:**
+
+```text
+Use acceptance-reviewer to review milestone 01-data. Supply AGENTS.md,
+SOFTWARE_SPECIFICATIONS.md, workshop-output/milestones/01-data/plan.md,
+workshop-output/milestones/01-data/evidence.md, issuetrackerapi/AGENTS.md and the
+changed model, migration, seed and spec paths identified in the evidence.
+Ask it to check existing User preservation, integrity rules, seed idempotence and
+whether the evidence supports completion. Main session: save the result to
+workshop-output/milestones/01-data/review.md. Do not fix findings until I review them.
+```
+
+Use the same plain-message sequence for each later milestone, substituting its ID,
+requirements and scope. Human operators can execute all commands themselves and
+supply the resulting evidence instead of authorizing the main session to execute.
+Either way, reviewers inspect evidence; they do not manufacture it.
+
+| Milestone gate | Direct command, working directory `issuetrackerapi` unless noted |
+|---|---|
+| New migration | `.venv/bin/python -m alembic upgrade head` with development environment |
+| Data seed | `.venv/bin/python -m app.seed_tracker`, twice, only after implementation |
+| Categories | `.venv/bin/python -m pytest spec/tracker/test_categories.py` with test environment |
+| Issues | `.venv/bin/python -m pytest spec/tracker/test_issues.py` with test environment |
+| Assignment | `.venv/bin/python -m pytest spec/tracker/test_assignment.py` with test environment |
+| Filters | `.venv/bin/python -m pytest spec/tracker/test_filters.py` with test environment |
+| Frontend slices | `npm run build`, working directory `issuetrackerweb` |
+| Final backend | `.venv/bin/python -m pytest spec` with test environment |
+
+Use M7's isolated test block, replacing the pytest target for a focused check.
+PowerShell uses `& ./.venv/Scripts/python.exe` and `npm.cmd`. Do not run these test
+commands in the development terminal without setting the test database first.
+The named tracker test files are target deliverables, not baseline files.
+
+### M10. Browser acceptance and shutdown without helper scripts
+
+After implementing the frontend and its acceptance tests, install the browser test
+dependency directly. **Working directory: `issuetrackerweb`.**
+
+```bash
+npm install --save-dev --save-exact @playwright/test@1.64.1
+npm pkg set 'scripts.test:e2e=playwright test'
+npx playwright install chromium
+```
+
+```powershell
+npm.cmd install --save-dev --save-exact @playwright/test@1.64.1
+npm.cmd pkg set 'scripts.test:e2e=playwright test'
+npx.cmd playwright install chromium
+```
+
+If Linux reports missing browser system libraries, follow Playwright's diagnostic
+and use `npx playwright install --with-deps chromium` on an appropriate machine.
+Review and commit the resulting package/lock changes as part of the test milestone.
+
+Create **`issuetrackerweb/playwright.config.js`**:
+
+```javascript
+import { defineConfig } from '@playwright/test';
+export default defineConfig({
+  testDir: './e2e',
+  workers: 1,
+  use: {
+    baseURL: process.env.E2E_BASE_URL || 'http://localhost:8000',
+    trace: 'retain-on-failure',
+  },
+  reporter: 'list',
+});
+```
+
+This config does not start servers or create tests. Use this **Claude prompt**:
+
+```text
+Implement browser acceptance tests under issuetrackerweb/e2e against the running
+local API and PostgreSQL, not mocked API responses. Read the specification's browser
+demonstration. Cover login, category/issue creation, assignment and clearing, edits,
+reload persistence, combined filters and reset, deletion conflict/confirmation,
+empty results and network-error feedback. Use unique test data and clean up only
+records created by the tests. Read E2E_API_URL with localhost:3000 as its default.
+Do not modify environment files or claim tests ran until executed. Keep the
+Playwright worker count at one. Provide direct commands and evidence.
+```
+
+Run the API and frontend as in M6; seed the implemented categories first if needed.
+Check `http://localhost:3000/docs` and the browser login manually rather than using
+a readiness wrapper. E2E exercises the **local development** database because that
+is what the running API uses; never point it at shared or production data.
+
+**Working directory: `issuetrackerweb`, verification terminal:**
+
+```bash
+E2E_BASE_URL=http://localhost:8000 E2E_API_URL=http://localhost:3000 npm run test:e2e
+```
+
+```powershell
+$env:E2E_BASE_URL = 'http://localhost:8000'
+$env:E2E_API_URL = 'http://localhost:3000'
+npm.cmd run test:e2e
+```
+
+Ask `acceptance-reviewer` to inspect the final evidence and gaps, then perform the
+specification's browser demonstration yourself. Save a final handoff with both
+Git revisions/dirty states and outcomes. Review traces before sharing: they can
+contain application session data.
+
+Stop API/frontend with Ctrl+C in their terminals. **At manual root**, stop the
+manual database stack (same command in Bash and PowerShell):
+
+```bash
+docker compose -p issue-tracker-manual stop
+```
+
+`stop` preserves development data. Do not use `down -v` as routine cleanup; it
+removes the named development volume. At the end, students should be able to
+explain every command and reproduce this layout in a different project without
+copying the workshop launcher or installer.
+
+**Instructor gate:** baseline startup/test/build, real subagent invocation and
+review, each implementation gate, final browser acceptance, and saved evidence.
+See VALIDATION.md for which parts of this manual route have actually been rehearsed.
+
+
 ## 2. Instructor rehearsal and opening demonstration
 
 ### Rehearse the completed reference before class
@@ -129,6 +822,22 @@ claude --version
 (cd instructor-reference/issuetrackerweb && npx playwright install chromium)
 ```
 
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+Get-Location
+py -3.14 -m tools.workshop --reference doctor
+claude --version
+py -3.14 -m tools.workshop --reference setup
+py -3.14 -m tools.workshop --reference db up
+py -3.14 -m tools.workshop --reference db migrate
+py -3.14 -m tools.workshop --reference db seed
+py -3.14 -m tools.workshop --reference test
+py -3.14 -m tools.workshop --reference build
+Push-Location instructor-reference/issuetrackerweb
+try { npx.cmd playwright install chromium } finally { Pop-Location }
+```
+
 `doctor` displays versions and checks Docker access; inspect the versions yourself.
 Setup installs lockfiles and preserves existing `.env` files. Migration should
 reach the tracker migration. The seed creates/updates the local demo admin and
@@ -141,10 +850,22 @@ Start terminal A:
 ./workshop --reference start api
 ```
 
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+py -3.14 -m tools.workshop --reference start api
+```
+
 Start terminal B:
 
 ```bash
 ./workshop --reference start web
+```
+
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+py -3.14 -m tools.workshop --reference start web
 ```
 
 Then, in terminal C:
@@ -155,6 +876,16 @@ python3 tools/wait_servers.py http://localhost:3001/docs http://localhost:8001
 python3 tools/check_docs.py
 python3 -m unittest discover -s tools/tests
 python3 05-testing-debugging-and-demo/examples/hooks/test_check_python_syntax.py
+```
+
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+py -3.14 tools/wait_servers.py http://localhost:3001/docs http://localhost:8001
+py -3.14 -m tools.workshop --reference e2e
+py -3.14 tools/check_docs.py
+py -3.14 -m unittest discover -s tools/tests
+py -3.14 05-testing-debugging-and-demo/examples/hooks/test_check_python_syntax.py
 ```
 
 On Linux, missing Chromium system libraries may require the documented Playwright
@@ -222,7 +953,7 @@ reference lives elsewhere and is not the student's working implementation.
 > loaded rather than assuming a filename is enough. The project profile contains
 > this project's paths and commands; the reusable skills contain procedures.
 
-### Guided setup — Bash in the student workspace
+### Guided setup — terminal in the student workspace
 
 Use a fresh course copy for the student-path demonstration if your root already
 contains student work. Do not delete existing work to make the demo look clean.
@@ -240,6 +971,21 @@ git -C issuetrackerapi status --short
 git -C issuetrackerweb status --short
 ```
 
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+py -3.14 -m tools.workshop doctor
+py -3.14 -m tools.workshop setup
+py -3.14 -m tools.workshop db up
+py -3.14 -m tools.workshop db migrate
+py -3.14 -m tools.workshop install-kit
+New-Item -ItemType Directory -Force -Path 'workshop-output/milestones/setup', 'workshop-output/milestones/exploration', 'workshop-output/milestones/01-data' | Out-Null
+py -3.14 -m tools.workshop test
+py -3.14 -m tools.workshop build
+git -C issuetrackerapi status --short
+git -C issuetrackerweb status --short
+```
+
 Expected: pinned templates installed, both databases healthy, baseline migration
 applied, tests/build successful. Do not run `db seed` until the category seed is
 implemented in Module 4. Baseline source changes are compatibility fixes supplied
@@ -252,6 +998,20 @@ copying over guidance. The generic AGENTS candidate does not replace course poli
 After inspecting both diffs, make baseline commits in the independent app repos:
 
 ```bash
+git -C issuetrackerapi diff
+git -C issuetrackerweb diff
+git -C issuetrackerapi add .
+git -C issuetrackerapi diff --cached --stat
+git -C issuetrackerapi commit -m "Establish workshop baseline"
+git -C issuetrackerweb add .
+git -C issuetrackerweb diff --cached --stat
+git -C issuetrackerweb commit -m "Establish workshop baseline"
+claude
+```
+
+**PowerShell 7.4+ (Windows):**
+
+```powershell
 git -C issuetrackerapi diff
 git -C issuetrackerweb diff
 git -C issuetrackerapi add .
@@ -340,6 +1100,15 @@ sed -n '1,180p' issuetrackerweb/src/js/services/UserService.js
 sed -n '1,160p' issuetrackerweb/src/js/helpers/AppHelper.js
 ```
 
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+Get-Content issuetrackerapi/app/routes.py | Select-Object -First 180
+Get-Content issuetrackerapi/app/models/user.py | Select-Object -First 180
+Get-Content issuetrackerweb/src/js/services/UserService.js | Select-Object -First 180
+Get-Content issuetrackerweb/src/js/helpers/AppHelper.js | Select-Object -First 160
+```
+
 Ask students to trace login → token/header → protected route → operation/session →
 response → React state. Use file evidence when someone proposes a convention.
 Do not teach a new architecture before examining the template's existing one.
@@ -423,7 +1192,7 @@ Save the accepted data-only plan to workshop-output/milestones/01-data/plan.md. 
 implement it yet. Preserve the acceptance criteria and exact verification commands.
 ```
 
-### Create and invoke a skill — Bash
+### Create and invoke a skill — terminal
 
 Use an unused skill directory for the classroom exercise. If this example already
 exists from a rehearsal, inspect it instead of overwriting student work.
@@ -443,6 +1212,23 @@ and recommendation. Do not claim tests passed without supplied execution evidenc
 SKILL
 ```
 
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+New-Item -ItemType Directory -Force -Path '.claude/skills/review-contract' | Out-Null
+@'
+---
+name: review-contract
+description: Compare a requested API change with the project contract and existing source.
+disable-model-invocation: true
+---
+Read workflow/project.md and SOFTWARE_SPECIFICATIONS.md. Review $ARGUMENTS.
+Inspect relevant schemas, controllers, operations and tests. Do not edit source.
+Return a table: requirement, implementation path, test path, missing evidence,
+and recommendation. Do not claim tests passed without supplied execution evidence.
+'@ | Set-Content -Encoding utf8 .claude/skills/review-contract/SKILL.md
+```
+
 Explain the quoted heredoc: Bash preserves `$ARGUMENTS` for Claude to substitute
 later. Restart Claude and inspect skill discovery. Inside Claude:
 
@@ -458,7 +1244,7 @@ itself a deterministic test program.
 plan, and later repeat it against the implementation. Require one deliberately
 incomplete example to check whether it finds missing evidence.
 
-### Create a specialized reviewer — Bash
+### Create a specialized reviewer — terminal
 
 Display the [installed reviewer template](workflow-kit/template/.claude/agents/workshop-reviewer.md).
 The kit already installs ui-reviewer. To demonstrate creation, use this separate
@@ -478,6 +1264,24 @@ assignment clearing, filter reset, persistence and delete confirmation.
 Do not edit files or run commands. Report verdict, findings with paths, missing
 execution evidence and suggested tests. If input files are missing, say so.
 AGENT
+```
+
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+New-Item -ItemType Directory -Force -Path '.claude/agents' | Out-Null
+@'
+---
+name: ui-accessibility-reviewer
+description: Read-only review of Issue Tracker accessible UI states.
+tools: Read, Glob, Grep
+---
+Read AGENTS.md, workflow/project.md, the supplied plan and frontend paths.
+Check visible labels, loading/error/empty states, authenticated API calls,
+assignment clearing, filter reset, persistence and delete confirmation.
+Do not edit files or run commands. Report verdict, findings with paths, missing
+execution evidence and suggested tests. If input files are missing, say so.
+'@ | Set-Content -Encoding utf8 .claude/agents/ui-accessibility-reviewer.md
 ```
 
 Restart and check `/agents`. Explain that omitting Bash/Edit/Write is intentional:
@@ -580,14 +1384,14 @@ are the active workspace; consult the instructor solution only after an attempt.
 2. Accept the plan, leave Plan Mode, and explicitly ask Claude to save it to the
    milestone's `plan.md` without implementing yet. Saving alone is not approval.
 3. Invoke the listed implementation command. It requires that explicit acceptance.
-4. Run the Bash gate yourself, then the verification skill and a bounded review.
+4. Run the terminal gate yourself, then the verification skill and a bounded review.
 5. Repair confirmed failures within accepted scope; rerun affected checks and save
    evidence/handoff. Review the diff before committing in the affected app repo.
 
 Every milestone directory is `workshop-output/milestones/<id>/`. Preserve earlier
 plans/reviews/logs. Record workspace, app revisions, dirty state and actual outcomes.
 The [use-case guide](CLAUDE_USE_CASES.md) contains exact save, review and repair
-patterns. The commands below are **inside Claude** unless marked Bash.
+patterns. The commands below are **inside Claude** unless marked Bash or PowerShell.
 
 ### 1. Data — 01-data
 
@@ -610,13 +1414,22 @@ Accept/save to `workshop-output/milestones/01-data/plan.md`, then:
 ./workshop test
 ```
 
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+py -3.14 -m tools.workshop db migrate
+py -3.14 -m tools.workshop db seed
+py -3.14 -m tools.workshop db seed
+py -3.14 -m tools.workshop test
+```
+
 Expected: existing users preserved; repeated category seed does not duplicate the
 four sample categories. The local demo seed updates `admin@example.com` / `password`;
 never target a real deployment. Independent: prove database uniqueness and user
 preservation during migration. Recovery checkpoint: `01-data`.
 
 
-After the applicable Bash/browser gate, verify inside Claude:
+After the applicable terminal/browser gate, verify inside Claude:
 
 ```text
 /workshop-verify 01-data workshop-output/milestones/01-data/plan.md Verify the accepted increment and report criterion-level evidence.
@@ -640,12 +1453,18 @@ Accept/save to `workshop-output/milestones/02-categories/plan.md`, then:
 ./workshop test spec/tracker/test_categories.py
 ```
 
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+py -3.14 -m tools.workshop test spec/tracker/test_categories.py
+```
+
 Expected: 201 create, 409 duplicate/protected deletion, 422 invalid input, 404 missing,
 204 empty successful delete. Independent: duplicate rename and association preservation.
 Recovery checkpoint: `02-categories`.
 
 
-After the applicable Bash/browser gate, verify inside Claude:
+After the applicable terminal/browser gate, verify inside Claude:
 
 ```text
 /workshop-verify 02-categories workshop-output/milestones/02-categories/plan.md Verify the accepted increment and report criterion-level evidence.
@@ -669,11 +1488,17 @@ Accept/save to `workshop-output/milestones/03-issues/plan.md`, then:
 ./workshop test spec/tracker/test_issues.py
 ```
 
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+py -3.14 -m tools.workshop test spec/tracker/test_issues.py
+```
+
 Independent: boundary lengths, whitespace-only title and unauthenticated writes.
 Recovery checkpoint: `03-issues`.
 
 
-After the applicable Bash/browser gate, verify inside Claude:
+After the applicable terminal/browser gate, verify inside Claude:
 
 ```text
 /workshop-verify 03-issues workshop-output/milestones/03-issues/plan.md Verify the accepted increment and report criterion-level evidence.
@@ -697,11 +1522,17 @@ Accept/save to `workshop-output/milestones/04-assignment/plan.md`, then:
 ./workshop test spec/tracker/test_assignment.py
 ```
 
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+py -3.14 -m tools.workshop test spec/tracker/test_assignment.py
+```
+
 Independent: verify ordinary-user assignee access without exposing /users or sensitive
 fields. Complete the [assignment diagnosis](04-issue-tracker-implementation/03_DIAGNOSTIC_LAB.md). Recovery: `04-assignment`.
 
 
-After the applicable Bash/browser gate, verify inside Claude:
+After the applicable terminal/browser gate, verify inside Claude:
 
 ```text
 /workshop-verify 04-assignment workshop-output/milestones/04-assignment/plan.md Verify the accepted increment and report criterion-level evidence.
@@ -725,6 +1556,12 @@ Accept/save to `workshop-output/milestones/05-filters/plan.md`, then:
 ./workshop test spec/tracker/test_filters.py
 ```
 
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+py -3.14 -m tools.workshop test spec/tracker/test_filters.py
+```
+
 Independent: equal-timestamp paging without repetition or omission. Recovery: `05-filters`.
 
 ### 6. Frontend — four teaching increments
@@ -734,7 +1571,7 @@ These four IDs organize evidence, **not recovery snapshots**. The existing
 an accepted plan before the corresponding implementation invocation.
 
 
-After the applicable Bash/browser gate, verify inside Claude:
+After the applicable terminal/browser gate, verify inside Claude:
 
 ```text
 /workshop-verify 05-filters workshop-output/milestones/05-filters/plan.md Verify the accepted increment and report criterion-level evidence.
@@ -756,7 +1593,7 @@ Observe create/edit/delete and validation feedback in the browser. Independent:
 verify an API error is visible rather than rendered as an empty successful list.
 
 
-After the applicable Bash/browser gate, verify inside Claude:
+After the applicable terminal/browser gate, verify inside Claude:
 
 ```text
 /workshop-verify 06a-categories-ui workshop-output/milestones/06a-categories-ui/plan.md Verify the accepted increment and report criterion-level evidence.
@@ -778,7 +1615,7 @@ Observe creation through the form and persisted details after reload. Independen
 no categories available must produce useful guidance rather than an unusable save.
 
 
-After the applicable Bash/browser gate, verify inside Claude:
+After the applicable terminal/browser gate, verify inside Claude:
 
 ```text
 /workshop-verify 06b-issue-create-details workshop-output/milestones/06b-issue-create-details/plan.md Verify the accepted increment and report criterion-level evidence.
@@ -800,7 +1637,7 @@ Observe changed fields after reload and an unassigned issue after explicit clear
 Independent: reproduce a rejected API update and verify the UI explains it.
 
 
-After the applicable Bash/browser gate, verify inside Claude:
+After the applicable terminal/browser gate, verify inside Claude:
 
 ```text
 /workshop-verify 06c-edit-assignment workshop-output/milestones/06c-edit-assignment/plan.md Verify the accepted increment and report criterion-level evidence.
@@ -822,7 +1659,7 @@ Observe filtered matches, reset, cancellation preserving an issue, and confirmed
 removal. Independent: no matches and network error must remain distinct UI states.
 
 
-After the applicable Bash/browser gate, verify inside Claude:
+After the applicable terminal/browser gate, verify inside Claude:
 
 ```text
 /workshop-verify 06d-filters-deletion workshop-output/milestones/06d-filters-deletion/plan.md Verify the accepted increment and report criterion-level evidence.
@@ -830,11 +1667,19 @@ After the applicable Bash/browser gate, verify inside Claude:
 
 #### Browser gates for each increment
 
-Run **Bash** after implementation:
+Run the block for your shell after implementation:
 
 ```bash
 ./workshop build
 (cd issuetrackerweb && npx playwright install chromium)
+```
+
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+py -3.14 -m tools.workshop build
+Push-Location issuetrackerweb
+try { npx.cmd playwright install chromium } finally { Pop-Location }
 ```
 
 Start API and web in separate root terminals and keep them running:
@@ -843,14 +1688,32 @@ Start API and web in separate root terminals and keep them running:
 ./workshop start api
 ```
 
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+py -3.14 -m tools.workshop start api
+```
+
 ```bash
 ./workshop start web
+```
+
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+py -3.14 -m tools.workshop start web
 ```
 
 In a third terminal:
 
 ```bash
 ./workshop e2e
+```
+
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+py -3.14 -m tools.workshop e2e
 ```
 
 Use `http://localhost:8000/#/login` with the local demo account. Each increment adds
@@ -877,7 +1740,7 @@ or needing more evidence. Do not inspect instructor-reference.
 ```
 
 Use ui-reviewer for frontend increments. Monitor actual tasks and file reads; a
-reviewer's verdict cannot replace Bash/browser results. For a confirmed defect,
+reviewer's verdict cannot replace terminal/browser results. For a confirmed defect,
 use the bounded repair prompt in the [recipes](CLAUDE_USE_CASES.md). Preserve
 failed-run evidence and append the repaired run. Review diffs and commit in the
 affected app repository once the gate passes.
@@ -909,6 +1772,22 @@ workshop_run_id=$(date -u +%Y%m%dT%H%M%SZ)
 ./workshop test 2>&1 | tee "workshop-output/milestones/final/logs/${workshop_run_id}-backend.log"
 ./workshop build 2>&1 | tee "workshop-output/milestones/final/logs/${workshop_run_id}-build.log"
 ./workshop e2e 2>&1 | tee "workshop-output/milestones/final/logs/${workshop_run_id}-browser.log"
+git -C issuetrackerapi rev-parse HEAD
+git -C issuetrackerweb rev-parse HEAD
+git -C issuetrackerapi status --short
+git -C issuetrackerweb status --short
+```
+
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+New-Item -ItemType Directory -Force -Path 'workshop-output/milestones/final/logs' | Out-Null
+$ErrorActionPreference = "Stop"
+$PSNativeCommandUseErrorActionPreference = $true
+$workshop_run_id = [DateTime]::UtcNow.ToString("yyyyMMddTHHmmssfffffffZ")
+py -3.14 -m tools.workshop test 2>&1 | Tee-Object -FilePath "workshop-output/milestones/final/logs/${workshop_run_id}-backend.log"
+py -3.14 -m tools.workshop build 2>&1 | Tee-Object -FilePath "workshop-output/milestones/final/logs/${workshop_run_id}-build.log"
+py -3.14 -m tools.workshop e2e 2>&1 | Tee-Object -FilePath "workshop-output/milestones/final/logs/${workshop_run_id}-browser.log"
 git -C issuetrackerapi rev-parse HEAD
 git -C issuetrackerweb rev-parse HEAD
 git -C issuetrackerapi status --short
@@ -955,6 +1834,14 @@ First run isolated fixtures:
 python3 05-testing-debugging-and-demo/examples/hooks/test_check_python_syntax.py
 mkdir -p .claude/hooks
 cp -n 05-testing-debugging-and-demo/examples/hooks/check_python_syntax.py .claude/hooks/check_python_syntax.py
+```
+
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+py -3.14 05-testing-debugging-and-demo/examples/hooks/test_check_python_syntax.py
+New-Item -ItemType Directory -Force -Path '.claude/hooks' | Out-Null
+if (-not (Test-Path .claude/hooks/check_python_syntax.py)) { Copy-Item 05-testing-debugging-and-demo/examples/hooks/check_python_syntax.py .claude/hooks/check_python_syntax.py }
 ```
 
 Open the [settings fragment](05-testing-debugging-and-demo/examples/hooks/settings.fragment.json).
@@ -1032,6 +1919,19 @@ First stop the student's API/web with Ctrl+C in their respective terminals. Then
 ./workshop --workspace recovery/classroom-completed build
 ```
 
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+py -3.14 -m tools.workshop db stop
+py -3.14 -m tools.workshop recover 06-frontend recovery/classroom-completed
+py -3.14 -m tools.workshop --workspace recovery/classroom-completed setup
+py -3.14 -m tools.workshop --workspace recovery/classroom-completed db up
+py -3.14 -m tools.workshop --workspace recovery/classroom-completed db migrate
+py -3.14 -m tools.workshop --workspace recovery/classroom-completed db seed
+py -3.14 -m tools.workshop --workspace recovery/classroom-completed test
+py -3.14 -m tools.workshop --workspace recovery/classroom-completed build
+```
+
 The destination must not exist. On a repeat exercise, choose a new directory name;
 do not delete the earlier recovery just to rerun this block. For an earlier slice,
 choose its milestone from the [checkpoint table](checkpoints/README.md). `00-baseline`
@@ -1043,8 +1943,20 @@ Run recovered servers in separate terminals:
 ./workshop --workspace recovery/classroom-completed start api
 ```
 
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+py -3.14 -m tools.workshop --workspace recovery/classroom-completed start api
+```
+
 ```bash
 ./workshop --workspace recovery/classroom-completed start web
+```
+
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+py -3.14 -m tools.workshop --workspace recovery/classroom-completed start web
 ```
 
 Install Chromium in the recovered web directory if needed, then use the same
@@ -1137,10 +2049,23 @@ Stop foreground API/web processes with Ctrl+C. Stop only the databases you used:
 ./workshop --reference db stop
 ```
 
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+py -3.14 -m tools.workshop db stop
+py -3.14 -m tools.workshop --reference db stop
+```
+
 If you used the recovery example, stop that workspace too:
 
 ```bash
 ./workshop --workspace recovery/classroom-completed db stop
+```
+
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+py -3.14 -m tools.workshop --workspace recovery/classroom-completed db stop
 ```
 
 Development volumes persist. Preserve student source and handoffs. Do not run
@@ -1180,6 +2105,12 @@ repository, initialize it once:
 git init
 ```
 
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+git init
+```
+
 Inspect status, ignore rules and documentation before staging:
 
 ```bash
@@ -1188,10 +2119,28 @@ python3 tools/check_docs.py
 git check-ignore -v --no-index issuetrackerapi/.env instructor-reference/issuetrackerapi/.env
 ```
 
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+git status --short --untracked-files=normal
+py -3.14 tools/check_docs.py
+git check-ignore -v --no-index issuetrackerapi/.env instructor-reference/issuetrackerapi/.env
+```
+
 Expected: both runtime paths are ignored. Check the opposite case:
 
 ```bash
 git check-ignore -v --no-index instructor-reference/issuetrackerapi/app/models/tracker.py instructor-reference/issuetrackerweb/package-lock.json
+```
+
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+& {
+    $PSNativeCommandUseErrorActionPreference = $false
+    git check-ignore -v --no-index instructor-reference/issuetrackerapi/app/models/tracker.py instructor-reference/issuetrackerweb/package-lock.json
+    if ($LASTEXITCODE -ne 1) { throw 'Expected source files to be eligible for tracking (exit 1).' }
+}
 ```
 
 Expected: no matching ignore rule and exit status 1 for these eligible source files.
@@ -1206,6 +2155,17 @@ git diff --cached --check
 git diff --cached --stat
 git diff --cached --name-only
 git ls-files --stage | awk '$1 == "160000" { print }'
+```
+
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+git add --dry-run .
+git add .
+git diff --cached --check
+git diff --cached --stat
+git diff --cached --name-only
+git ls-files --stage | Select-String '^160000 '
 ```
 
 The final command should not list the instructor apps as Git links. If it does,

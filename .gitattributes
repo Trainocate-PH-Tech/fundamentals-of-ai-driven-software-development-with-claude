@@ -1,0 +1,10 @@
+# Preserve executable scripts and cumulative Git patches across Windows clones.
+* text=auto
+*.py text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.patch -text
+workshop text eol=lf
+*.ps1 text eol=lf

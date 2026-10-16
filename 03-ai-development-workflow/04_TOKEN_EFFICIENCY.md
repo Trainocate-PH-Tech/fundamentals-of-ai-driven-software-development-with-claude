@@ -61,6 +61,12 @@ From Bash at the course root, after student setup:
 rg -n 'exclude_unset|assigned_user_id' issuetrackerapi/app/controllers issuetrackerapi/app/schemas
 ```
 
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+Get-ChildItem issuetrackerapi/app/controllers, issuetrackerapi/app/schemas -Recurse -Filter *.py | Select-String 'exclude_unset|assigned_user_id'
+```
+
 If ripgrep is unavailable, use editor search. Exclude generated dependencies and
 other workspaces from the search. A matching line is a navigation aid, not enough
 context to implement a fix: inspect the containing function before changing it.

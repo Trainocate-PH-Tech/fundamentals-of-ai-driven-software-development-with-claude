@@ -1,8 +1,10 @@
 # Set up Claude Code in the terminal
 
+For the full application toolchain and shell-specific exercises, follow [Windows setup](WINDOWS_SETUP.md). Claude installation alone does not install Python, Node, Git, or Docker.
+
 [Workshop home](README.md) · [Project setup](01-project-setup/README.md) · [VS Code guide](CLAUDE_CODE_VSCODE_SETUP.md)
 
-Documentation checked: 2026-10-15. The workshop targets Bash on Linux/WSL2. Installation is participant-run; see VALIDATION.md for the local CLI probe and application checks.
+Documentation checked: 2026-10-15. The workshop provides Bash on Linux/WSL2 and PowerShell 7.4+ on native Windows. Installation is participant-run; see VALIDATION.md for the local CLI probe and application checks.
 
 ## 1. Install the CLI
 

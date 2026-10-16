@@ -1,5 +1,7 @@
 # Reusable engineering kit
 
+See [Windows setup](../WINDOWS_SETUP.md). In PowerShell, inline `./workshop` commands use `py -3.14 -m tools.workshop`; run from the course root.
+
 Run `./workshop install-kit` at the course root. Missing files are installed,
 identical files retained, and conflicts staged under `.workshop/proposed/` for
 review. Existing student instructions and artifacts are never overwritten. Merge

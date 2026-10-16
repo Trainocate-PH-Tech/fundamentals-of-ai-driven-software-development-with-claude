@@ -29,3 +29,15 @@ can inspect Git diffs and run commands. Each module names its entry requirement,
 concrete result, guided task, independent task and exit gate. Instructors should
 use checkpoint recovery when debugging would otherwise consume a whole session,
 then have students explain the recovered change and rerun its gate.
+
+## Windows portability revision
+
+The former Unix-only launcher and Bash-only walkthroughs prevented native Windows
+participation. The launcher now selects platform-specific Python/npm paths and
+process cleanup; platform-specific requirements are reflected in every cumulative
+checkpoint. PowerShell alternatives appear beside terminal exercises across all
+five modules and the facilitator guide, including literal skill/agent file creation,
+recovery and evidence capture. `WINDOWS_SETUP.md` distinguishes native Windows from
+WSL2 and includes a full rehearsal checklist. Windows CI covers tooling/install/build
+and shell syntax; Docker Desktop and full native browser acceptance require the
+separate rehearsal. See `VALIDATION.md` for actual results and remaining limits.

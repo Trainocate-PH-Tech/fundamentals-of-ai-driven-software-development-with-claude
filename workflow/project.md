@@ -50,3 +50,14 @@ Use setup and exploration for Modules 1–2, 01-data through 05-filters for back
 06d-filters-deletion for frontend, and final for acceptance. These artifact IDs
 are not all recovery checkpoints. Only the checkpoints README defines recovery names.
 For another project, replace this profile's paths, contracts and commands first.
+
+## Host and shell selection
+
+Before executing commands, identify the OS, active shell, workspace, and Python.
+On native Windows PowerShell use `py -3.14 -m tools.workshop` in place of
+`./workshop`. Inside Git Bash on Windows use `python -m tools.workshop` after
+confirming `python --version` is 3.14; this still uses Windows dependencies.
+Linux/WSL uses `./workshop`. Do not mix Windows and WSL virtual environments or
+node_modules. The launcher selects Scripts/python.exe versus bin/python.
+Use PowerShell file/environment syntax in PowerShell, Bash syntax in Bash.
+Keep tokens in environment configuration, never in source or evidence logs.

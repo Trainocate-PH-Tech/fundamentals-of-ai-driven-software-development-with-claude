@@ -10,6 +10,12 @@ account/API usage and does not make a generated report deterministic.
 claude -p --permission-mode plan 'Read SOFTWARE_SPECIFICATIONS.md and workshop-output/milestones/final/evidence.md. Report unsupported completion claims with paths. Do not edit files or run commands.' > workshop-output/milestones/final/headless.txt
 ```
 
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+claude -p --permission-mode plan 'Read SOFTWARE_SPECIFICATIONS.md and workshop-output/milestones/final/evidence.md. Report unsupported completion claims with paths. Do not edit files or run commands.' > workshop-output/milestones/final/headless.txt
+```
+
 Check the exit status, report contents and account usage. A blank report or failed
 authentication is not success. Do not bypass permissions to make automation pass.
 **Independent:** run the same review against a deliberately incomplete copy of the

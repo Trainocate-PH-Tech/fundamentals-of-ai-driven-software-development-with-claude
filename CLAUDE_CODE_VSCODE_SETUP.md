@@ -1,5 +1,7 @@
 # Set up Claude Code in VS Code
 
+For the full application toolchain and shell-specific exercises, follow [Windows setup](WINDOWS_SETUP.md). Claude installation alone does not install Python, Node, Git, or Docker.
+
 [Workshop home](README.md) · [Project setup](01-project-setup/README.md) · [Terminal guide](CLAUDE_CODE_TERMINAL.md)
 
 Documentation checked: 2026-10-15. The steps below are for participants; no extension installation or authenticated session was performed while writing this guide.

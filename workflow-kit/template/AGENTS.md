@@ -21,3 +21,11 @@ Choose direct edits for trivial scoped work, planning for uncertain changes, and
 bounded read-only delegation for independent questions. Main-session execution
 and review findings are distinct evidence. See CLAUDE_USE_CASES.md in this course
 for recipes; adapt that reference when transferring the kit to another project.
+
+## Cross-platform commands
+
+Confirm the host OS and shell before issuing commands. Use the project's documented
+PowerShell equivalents on Windows; do not paste Bash heredocs, export statements,
+or Unix venv paths into PowerShell. Select the active workspace explicitly and
+record the OS/shell with verification evidence. Never reuse .venv or node_modules
+between Windows and WSL. See the project profile for launcher commands.

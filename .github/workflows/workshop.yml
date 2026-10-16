@@ -39,3 +39,39 @@ jobs:
         with:
           name: browser-failure
           path: instructor-reference/issuetrackerweb/test-results
+  windows-tooling:
+    runs-on: windows-2025
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install reference without Docker
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          python -m tools.workshop --reference setup
+          python -m tools.workshop --reference setup
+      - name: Verify native tooling, process behavior, hooks and build
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          python -m unittest discover -s tools/tests
+          python tools/check_docs.py --require-shells
+          python 05-testing-debugging-and-demo/examples/hooks/test_check_python_syntax.py
+          & ./instructor-reference/issuetrackerapi/.venv/Scripts/python.exe -m pytest instructor-reference/issuetrackerapi/spec/system/test_cli_process.py --confcutdir=instructor-reference/issuetrackerapi/spec/system -q
+          python -m tools.workshop --reference build
+          python -m tools.verify_checkpoints
+      - name: Preserve failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-failure
+          path: instructor-reference/issuetrackerapi/.pytest_cache

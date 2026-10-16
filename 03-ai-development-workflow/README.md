@@ -1,5 +1,7 @@
 # Module 3 — Plan, create skills, and supervise reviewers
 
+Windows users: complete [Windows setup](../WINDOWS_SETUP.md) first. Choose either the Bash or PowerShell block for each step, not both. Run terminal commands from the course root unless stated otherwise. Inline `./workshop` commands use `py -3.14 -m tools.workshop` in PowerShell; Claude slash commands and prompts are identical.
+
 **Entry:** verified application map. **Result:** an accepted implementation plan
 and a reusable workflow students can transfer to other projects.
 
@@ -24,7 +26,7 @@ expected behavior, not merely say “test it.”
 
 A skill is a folder containing SKILL.md with a name, a description explaining
 when it applies, and the reusable procedure. Supporting scripts live beside it.
-Create this from Bash at the course root:
+Create this from your selected terminal at the course root:
 
 ```bash
 mkdir -p .claude/skills/review-contract
@@ -39,6 +41,23 @@ Inspect the relevant schemas, endpoints, operations and tests. Do not edit sourc
 Return a table: requirement, source path, test path, missing evidence, recommendation.
 Do not claim a test passed unless its execution evidence was supplied.
 SKILL
+```
+
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+New-Item -ItemType Directory -Force -Path '.claude/skills/review-contract' | Out-Null
+@'
+---
+name: review-contract
+description: Compare a requested API change against the project contract and existing implementation.
+disable-model-invocation: true
+---
+Read workflow/project.md and SOFTWARE_SPECIFICATIONS.md. Review $ARGUMENTS.
+Inspect the relevant schemas, endpoints, operations and tests. Do not edit source.
+Return a table: requirement, source path, test path, missing evidence, recommendation.
+Do not claim a test passed unless its execution evidence was supplied.
+'@ | Set-Content -Encoding utf8 .claude/skills/review-contract/SKILL.md
 ```
 
 Restart Claude; use `/help` or type `/` to find the skill. Invoke **inside Claude**:
@@ -93,6 +112,12 @@ provide isolation for separate writing tasks but do not isolate shared databases
 
 ```bash
 cat .claude/agents/ui-reviewer.md
+```
+
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+Get-Content .claude/agents/ui-reviewer.md
 ```
 
 Extend `.claude/agents/ui-reviewer.md` with one additional evidence requirement

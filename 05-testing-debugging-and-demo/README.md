@@ -1,5 +1,7 @@
 # Module 5 — Prove completion and package the workflow
 
+Windows users: complete [Windows setup](../WINDOWS_SETUP.md) first. Choose either the Bash or PowerShell block for each step, not both. Run terminal commands from the course root unless stated otherwise. Inline `./workshop` commands use `py -3.14 -m tools.workshop` in PowerShell; Claude slash commands and prompts are identical.
+
 **Entry:** Module 4 integrated application. **Result:** reproducible checks,
 regression evidence and a handoff another developer can use.
 
@@ -24,6 +26,18 @@ workshop_run_id=$(date -u +%Y%m%dT%H%M%SZ)
 ./workshop test 2>&1 | tee "workshop-output/milestones/final/logs/${workshop_run_id}-backend.log"
 ./workshop build 2>&1 | tee "workshop-output/milestones/final/logs/${workshop_run_id}-build.log"
 ./workshop e2e 2>&1 | tee "workshop-output/milestones/final/logs/${workshop_run_id}-browser.log"
+```
+
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+New-Item -ItemType Directory -Force -Path 'workshop-output/milestones/final/logs' | Out-Null
+$ErrorActionPreference = "Stop"
+$PSNativeCommandUseErrorActionPreference = $true
+$workshop_run_id = [DateTime]::UtcNow.ToString("yyyyMMddTHHmmssfffffffZ")
+py -3.14 -m tools.workshop test 2>&1 | Tee-Object -FilePath "workshop-output/milestones/final/logs/${workshop_run_id}-backend.log"
+py -3.14 -m tools.workshop build 2>&1 | Tee-Object -FilePath "workshop-output/milestones/final/logs/${workshop_run_id}-build.log"
+py -3.14 -m tools.workshop e2e 2>&1 | Tee-Object -FilePath "workshop-output/milestones/final/logs/${workshop_run_id}-browser.log"
 ```
 
 `pipefail` preserves a failed command when using tee. Never write “passed” just

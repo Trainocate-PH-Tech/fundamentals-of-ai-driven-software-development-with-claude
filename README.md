@@ -11,7 +11,8 @@ copy-paste prompts, assessment, and troubleshooting.
 Start with **[Module 1](01-project-setup/README.md)**. Follow the five READMEs in order.
 Other pages are references and optional extension labs. Code fences labelled `bash`
 run in your terminal from this course's root unless explicitly stated otherwise.
-Fences labelled `text` are prompts to paste **inside Claude Code**, never into Bash.
+Fences labelled `powershell` run in PowerShell 7.4+. Choose the block for your shell.
+Fences labelled `text` are prompts to paste **inside Claude Code**, never into a shell.
 Generated code must pass the same gates as the instructor solution.
 
 | Module | Working result | Main engineering techniques |
@@ -32,10 +33,12 @@ The [specification](SOFTWARE_SPECIFICATIONS.md) defines behavior. The
 [Review findings](WORKSHOP_REVIEW.md) explain the changes and
 [validation](VALIDATION.md) distinguishes executed checks from live Claude exercises.
 
-Required environment: Bash on Linux or WSL2, Python 3.14, Node 24, Git, Docker with
-Compose, a browser, and Claude Code with a supported account or API billing.
-macOS can use Bash and Docker Desktop; the Linux reference run does not establish
-macOS verification. Native Windows commands are outside this course's tested path.
+Required environment: Bash on Linux/WSL2 or native Windows PowerShell 7.4+,
+Python 3.14, Node 24, Git, Docker with Compose and Linux containers, a browser,
+and Claude Code with a supported account or API billing.
+Start with [Windows setup](WINDOWS_SETUP.md) for native Windows or WSL2.
+Windows automation and instructions are included; see [validation](VALIDATION.md)
+for checks actually performed. macOS verification also requires its own rehearsal.
 
 The application is a local teaching MVP. Existing JWT authentication and User are
 reused; only Category and Issue are added. Instructor source is separate from the

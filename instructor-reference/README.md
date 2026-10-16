@@ -1,5 +1,7 @@
 # Tested instructor solution
 
+See [Windows setup](../WINDOWS_SETUP.md). In PowerShell, inline `./workshop` commands use `py -3.14 -m tools.workshop`; run from the course root.
+
 Source is kept separately from student work. Run from the **course root**:
 
 ```bash
@@ -12,14 +14,38 @@ Source is kept separately from student work. Run from the **course root**:
 ./workshop --reference build
 ```
 
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+py -3.14 -m tools.workshop --reference doctor
+py -3.14 -m tools.workshop --reference setup
+py -3.14 -m tools.workshop --reference db up
+py -3.14 -m tools.workshop --reference db migrate
+py -3.14 -m tools.workshop --reference db seed
+py -3.14 -m tools.workshop --reference test
+py -3.14 -m tools.workshop --reference build
+```
+
 Then run in separate terminals:
 
 ```bash
 ./workshop --reference start api
 ```
 
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+py -3.14 -m tools.workshop --reference start api
+```
+
 ```bash
 ./workshop --reference start web
+```
+
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+py -3.14 -m tools.workshop --reference start web
 ```
 
 Open `http://localhost:8001/#/login`; local demo account:
@@ -32,6 +58,14 @@ are different. Stop foreground servers with Ctrl+C; stop DBs with
 ```bash
 (cd instructor-reference/issuetrackerweb && npx playwright install chromium)
 ./workshop --reference e2e
+```
+
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+Push-Location instructor-reference/issuetrackerweb
+try { npx.cmd playwright install chromium } finally { Pop-Location }
+py -3.14 -m tools.workshop --reference e2e
 ```
 
 Pinned upstreams (the workshop patches extend these, never latest):

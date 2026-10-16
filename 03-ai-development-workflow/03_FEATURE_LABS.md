@@ -13,6 +13,12 @@ A plugin packages related skills/agents/hooks for sharing. Inspect the supplied
 claude --plugin-dir ./03-ai-development-workflow/examples/plugins/issue-tracker-workshop
 ```
 
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+claude --plugin-dir ./03-ai-development-workflow/examples/plugins/issue-tracker-workshop
+```
+
 Inside Claude, invoke the namespaced command:
 
 ```text
@@ -33,6 +39,13 @@ read-only reviewers, so worktrees are optional.
 **Guided:** after committing a clean API checkpoint, run:
 
 ```bash
+git -C issuetrackerapi worktree add ../api-review-lab -b workshop/review-lab
+git -C issuetrackerapi worktree list
+```
+
+**PowerShell 7.4+ (Windows):**
+
+```powershell
 git -C issuetrackerapi worktree add ../api-review-lab -b workshop/review-lab
 git -C issuetrackerapi worktree list
 ```

@@ -17,7 +17,7 @@ with tempfile.TemporaryDirectory(prefix='workshop-checkpoints-') as tmp:
             if not source.exists():
                 source=PINS[app][0]
             dest=Path(tmp)/f'{stage.name}-{app}'
-            run('git','clone','--shared',str(source),str(dest))
+            run('git','clone','--config','core.autocrlf=false','--shared',str(source),str(dest))
             run('git','checkout','--detach',pin,cwd=dest)
             patch=stage/(app+'.patch')
             if patch.stat().st_size:

@@ -1,5 +1,7 @@
 # Module 2 — Build an evidence-based application map
 
+Windows users: complete [Windows setup](../WINDOWS_SETUP.md) first. Choose either the Bash or PowerShell block for each step, not both. Run terminal commands from the course root unless stated otherwise. Inline `./workshop` commands use `py -3.14 -m tools.workshop` in PowerShell; Claude slash commands and prompts are identical.
+
 **Entry:** Module 1 baseline checks pass. **Result:** a verified request/data flow
 and contract map; no feature implementation yet.
 
@@ -10,6 +12,15 @@ sed -n '1,180p' issuetrackerapi/app/routes.py
 sed -n '1,180p' issuetrackerapi/app/models/user.py
 sed -n '1,180p' issuetrackerweb/src/js/services/UserService.js
 sed -n '1,160p' issuetrackerweb/src/js/helpers/AppHelper.js
+```
+
+**PowerShell 7.4+ (Windows):**
+
+```powershell
+Get-Content issuetrackerapi/app/routes.py | Select-Object -First 180
+Get-Content issuetrackerapi/app/models/user.py | Select-Object -First 180
+Get-Content issuetrackerweb/src/js/services/UserService.js | Select-Object -First 180
+Get-Content issuetrackerweb/src/js/helpers/AppHelper.js | Select-Object -First 160
 ```
 
 Trace login → browser token → API auth dependency → controller → operation →
