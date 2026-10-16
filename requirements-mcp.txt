@@ -1,0 +1,2 @@
+# Isolated optional lab; not an Issue Tracker API dependency.
+mcp==1.26.0

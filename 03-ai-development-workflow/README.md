@@ -123,6 +123,8 @@ Extend `.claude/agents/ui-reviewer.md` with one additional evidence requirement
 for accessible labels. Preserve its name and read-only tools. Restart, inspect `/agents`, then delegate a frontend-plan review.
 Save the report and identify at least one missing acceptance test yourself.
 
+**Optional extension:** [MCP fundamentals](../MCP_FUNDAMENTALS.md) walks through hosting a Python MCP server, connecting a restricted subagent, and validating actual tool calls.
+
 ## 4. Resume from evidence
 
 Before `/compact` or ending a session, ask:

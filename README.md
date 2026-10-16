@@ -29,6 +29,8 @@ Generated code must pass the same gates as the instructor solution.
 Use [Claude use-case recipes](CLAUDE_USE_CASES.md) to choose a workflow, provide task inputs,
 and evaluate the output.
 
+Optional: [MCP fundamentals](MCP_FUNDAMENTALS.md) connects a custom subagent to a local Python MCP server with live validation.
+
 The [specification](SOFTWARE_SPECIFICATIONS.md) defines behavior. The
 [instruction examples](workflow-kit/README.md) provide optional files for manual adoption.
 [Reference instructions](instructor-reference/README.md) run the completed solution;
